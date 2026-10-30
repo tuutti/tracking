@@ -1,0 +1,426 @@
+:root {
+  --brand: #e4572e;
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --text: #1d1f22;
+  --muted: #6b7078;
+  --border: #e2e0db;
+  --track: #e8e6e1;
+  --warn-bg: #fff4d6;
+  --warn-text: #6b4a00;
+  --err-bg: #fde4e1;
+  --err-text: #7a1d12;
+  --ok: #2f9e44;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121416;
+    --surface: #1b1e21;
+    --text: #eceae6;
+    --muted: #9aa0a8;
+    --border: #2c3035;
+    --track: #2c3035;
+    --warn-bg: #3a2f12;
+    --warn-text: #f3d68a;
+    --err-bg: #3d1a16;
+    --err-text: #f6b4aa;
+    --ok: #51cf66;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121416;
+  --surface: #1b1e21;
+  --text: #eceae6;
+  --muted: #9aa0a8;
+  --border: #2c3035;
+  --track: #2c3035;
+  --warn-bg: #3a2f12;
+  --warn-text: #f3d68a;
+  --err-bg: #3d1a16;
+  --err-text: #f6b4aa;
+  --ok: #51cf66;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  border-top: 3px solid var(--brand);
+}
+.titles { min-width: 0; }
+.topbar h1 { margin: 0; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar p { margin: 0; font-size: 13px; color: var(--muted); }
+
+.top-right { flex: none; display: flex; align-items: center; gap: 14px; }
+.lang-switch { display: flex; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+.lang-switch a { padding: 2px 5px; color: var(--muted); text-decoration: none; border-radius: 4px; }
+.lang-switch a + a { margin-left: 2px; }
+.lang-switch a:hover { color: var(--text); }
+.lang-switch a[aria-current] { color: var(--text); background: var(--track); }
+
+.live {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.live.on { color: var(--ok); }
+.live.on::before { background: var(--ok); animation: blink 2s infinite; }
+@keyframes blink { 50% { opacity: .3; } }
+
+.layout { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.map-wrap { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 240px; }
+.map { flex: 1; min-height: 0; background: var(--track); }
+
+/* Rewind slider along the bottom of the map. */
+.rewind {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.rewind[hidden], .map-buttons[hidden], .panel-toggle[hidden] { display: none; }
+.rewind input { flex: 1; min-width: 0; margin: 0; height: 28px; accent-color: var(--brand); }
+.rewind-time { flex: none; width: 5.5em; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.rewind.rewound .rewind-time { color: var(--text); font-weight: 600; }
+.rewind .play {
+  flex: none;
+  position: relative;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  border: 0;
+  background: var(--brand);
+  cursor: pointer;
+}
+/* Triangle (play) or two bars (pause), drawn in CSS so no icon font is needed. */
+.rewind .play::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 9px;
+  border-style: solid;
+  border-width: 7px 0 7px 11px;
+  border-color: transparent transparent transparent #fff;
+}
+.rewind .play.playing::before {
+  left: 10px;
+  width: 4px; /* + 2 × 4px bars = 12px */
+  height: 14px;
+  border: 0;
+  border-left: 4px solid #fff;
+  border-right: 4px solid #fff;
+}
+.rewind select {
+  flex: none;
+  font: inherit;
+  padding: 3px 4px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+/* Floats over the map above the bar, outside its layout: appearing at the
+   end of the slider must not change the slider's width, or the end under the
+   pointer flips between live and rewound. */
+#rewind-live[hidden] { display: none; }
+#rewind-live {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 16px;
+  z-index: 1001;
+  box-shadow: 0 1px 4px rgb(0 0 0 / .25);
+  flex: none;
+  font: inherit;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--brand);
+  background: var(--brand);
+  color: #fff;
+  cursor: pointer;
+}
+
+.map-buttons {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 500;
+  display: flex;
+  gap: 6px;
+}
+.map-buttons button {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgb(0 0 0 / .15);
+  cursor: pointer;
+}
+.map-buttons button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+.panel {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+/* Bottom-sheet toggle; phones and tablets only (see the desktop media query). */
+.panel-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 36px;
+  margin: -8px 0 6px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.panel-toggle .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); }
+.panel.collapsed #panel-details { display: none; }
+
+.notice { border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; font-size: 13px; }
+.notice.warn { background: var(--warn-bg); color: var(--warn-text); }
+.notice.err { background: var(--err-bg); color: var(--err-text); }
+
+.progress-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; margin-bottom: 6px; }
+.bar { height: 10px; border-radius: 5px; background: var(--track); overflow: hidden; }
+.bar-fill { height: 100%; width: 0; background: var(--brand); border-radius: 5px; transition: width .6s ease; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 12px; margin: 12px 0 0; }
+.stats div { min-width: 0; }
+.stats .wide { grid-column: span 4; }
+.stats dt { font-size: 12px; color: var(--muted); }
+.stats dd { margin: 0; font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stats dd small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.stats .wide dd { font-size: 17px; }
+
+.stats dd.cell-note { margin-top: 1px; font-size: 12px; font-weight: 400; white-space: normal; }
+.stats dd.low { color: var(--err-text); }
+.stats dd.ahead { color: var(--ok); }
+.stats dd.behind { color: var(--err-text); }
+.stats dd.record-projection { margin-top: 2px; font-size: 13px; font-weight: 400; white-space: normal; }
+
+/* Participant list, furthest first; each row opens that participant's details. */
+.list-title, .rider-name { margin: 0; font-size: 15px; }
+.list-title { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sort { display: flex; font-size: 12px; }
+.sort button {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.sort button:first-child { border-radius: 6px 0 0 6px; }
+.sort button + button { border-left: 0; border-radius: 0 6px 6px 0; }
+.sort button[aria-pressed="true"] { background: var(--track); color: var(--text); font-weight: 600; }
+.participants { list-style: none; margin: 6px 0 0; padding: 0; }
+.participants li { display: flex; align-items: center; gap: 8px; }
+.participants li + li { border-top: 1px solid var(--border); }
+/* Show on the map: the rider's own colour; hidden riders dim in the list. */
+.participants .vis { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--c, var(--brand)); cursor: pointer; }
+.participants li.off .participant { opacity: .45; }
+.search {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.no-matches { margin: 8px 0 0; font-size: 13px; }
+.participants li[hidden] { display: none; }
+/* Select all and search on one row; the checkbox lines up with the rows' ones. */
+.list-tools { display: flex; align-items: center; gap: 8px; margin: 8px 0 2px; }
+.list-tools .vis { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--brand); cursor: pointer; }
+.participant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 2px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.participant:hover .p-name { text-decoration: underline; }
+.swatch, .rider-name::before {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--c, var(--brand));
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--border);
+}
+.p-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.p-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-note { font-size: 12px; }
+.p-bar { height: 4px; border-radius: 2px; background: var(--track); overflow: hidden; margin-top: 2px; }
+.p-bar span { display: block; height: 100%; width: 0; background: var(--c, var(--brand)); }
+/* Checkpoints that needn't be visited: no share done or distance left to show. */
+.no-progress .bar, .no-progress .p-bar, .no-progress .remain-cell { display: none; }
+.p-dist { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.p-dist strong { font-size: 18px; }
+.p-dist small { font-size: 12px; color: var(--muted); }
+
+.detail-head { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-bottom: 10px; }
+.detail-head[hidden], #list-view[hidden], .progress[hidden], .stats[hidden] { display: none; }
+.back {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.back::before { content: "‹ "; }
+.back:hover { color: var(--text); }
+.back[hidden] { display: none; }
+.rider-name { display: flex; align-items: center; gap: 8px; font-size: 17px; }
+.rider-name::before { content: ""; }
+
+.muted { color: var(--muted); }
+
+/* Collapsed on a phone: one row with the name and the way back, and a thin bar. */
+@media (max-width: 899px) {
+  .panel.collapsed { padding-top: 6px; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .panel.collapsed .panel-toggle { min-height: 26px; margin: -4px 0 2px; padding: 2px 0; }
+  .panel.collapsed .detail-head { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .panel.collapsed .rider-name { order: -1; min-width: 0; font-size: 15px; }
+  .panel.collapsed .back { flex: none; }
+  .panel.collapsed .progress-head { display: none; }
+  .panel.collapsed .bar { height: 6px; }
+  .panel.collapsed .notice { margin-bottom: 6px; padding: 6px 8px; }
+}
+
+@media (max-width: 420px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stats .wide { grid-column: span 2; }
+  .stats dd { font-size: 18px; }
+}
+
+@media (min-width: 900px) {
+  .layout { flex-direction: row-reverse; }
+  .panel-toggle { display: none; }
+  .panel.collapsed #panel-details { display: block; }
+  .panel { width: 360px; flex: none; border-top: 0; border-right: 1px solid var(--border); overflow-y: auto; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stats .wide { grid-column: span 2; }
+  .stats dd { font-size: 26px; }
+}
+
+/* Rider marker (Leaflet positions the icon absolutely: the dot and pulse sit in it) */
+.rider .dot {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: var(--c, var(--brand));
+  border: 2.5px solid #fff;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / .25);
+}
+.rider .pulse {
+  position: absolute; inset: -5px;
+  border-radius: 50%;
+  background: var(--c, var(--brand));
+  opacity: .35;
+  animation: pulse 2s ease-out infinite;
+}
+.rider.stale .dot { background: #8a8f96; }
+.rider:not(.active) .pulse { display: none; }
+/* Riders no longer on the way (unless shown): faded, name too. */
+.rider.dim { opacity: .45; }
+.leaflet-tooltip.rider-tip.dim { opacity: .45 !important; }
+@keyframes pulse { from { transform: scale(.5); opacity: .5; } to { transform: scale(1.2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .rider .pulse, .live.on::before { animation: none; }
+}
+
+/* Checkpoint markers: outlined until the shown participant reaches them. */
+.cp span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--c, #3a6ea5);
+  background: #fff;
+  color: #1d1f22;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgb(0 0 0 / .3);
+}
+.cp.reached span { background: var(--c, #3a6ea5); border-color: #fff; color: #fff; }
+/* Start, checkpoints and finish: an upside-down teardrop, the corner turned to
+   point down at the spot (12px × √2 below the centre: the icon's anchor). */
+.cp-pin span { border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+.cp-pin b { transform: rotate(45deg); }
+
+/* Checkpoint table in the details. */
+.stats dd:has(.cp-table) { white-space: normal; }
+.cp-table { width: 100%; border-collapse: collapse; font-size: 13px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.cp-table th, .cp-table td { padding: 4px 6px 4px 0; text-align: right; white-space: nowrap; }
+.cp-table th:first-child { text-align: left; white-space: normal; font-weight: 600; }
+.cp-table thead th { font-size: 11px; font-weight: 500; color: var(--muted); }
+.cp-table tbody tr + tr { border-top: 1px solid var(--border); }
+.cp-table tr.ahead { color: var(--muted); }
+.cp-table tr.ahead th { font-weight: 400; }
+
+.leaflet-container { font: inherit; }
+.leaflet-tooltip.record-tip, .leaflet-tooltip.rider-tip { font-size: 11px; padding: 1px 5px; }
+/* Riders' names: faint, so a crowded map stays readable. */
+.leaflet-tooltip.rider-tip {
+  font-weight: 500;
+  color: #4a4f57;
+  background: rgb(255 255 255 / .6);
+  border-color: transparent;
+  box-shadow: none;
+}
+.leaflet-tooltip.rider-tip::before { display: none; }
+/* Checkpoint and parcours names, always shown: on the left, so riders' names (right) don't cover them. */
+.leaflet-tooltip.cp-tip { font-size: 11px; padding: 1px 5px; color: var(--route, #3a6ea5); font-weight: 600; }

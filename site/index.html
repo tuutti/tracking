@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Live ride tracker</title>
+  <meta name="description" content="Live position and progress of the riders.">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="titles">
+      <h1 id="title" data-i18n="heading">Live tracker</h1>
+      <p id="subtitle" hidden></p>
+    </div>
+    <div class="top-right">
+      <span id="live" class="live" aria-live="polite" data-i18n="loading">Loading…</span>
+      <nav id="lang-switch" class="lang-switch" aria-label="Language"></nav>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div class="map-wrap">
+      <div id="map" class="map" role="region" aria-label="Map" data-i18n-aria="map"></div>
+      <div class="map-buttons">
+        <button id="btn-rider" type="button" data-i18n="followRider">Follow rider</button>
+        <button id="btn-route" type="button" data-i18n="wholeRoute">Whole route</button>
+      </div>
+      <div id="rewind" class="rewind" hidden>
+        <button id="rewind-play" class="play" type="button" aria-label="Play" title="Play"></button>
+        <input id="rewind-slider" type="range" min="0" max="0" step="1" value="0"
+               aria-label="Rewind the ride" data-i18n-aria="rewind">
+        <span id="rewind-time" class="rewind-time"></span>
+        <select id="rewind-speed" aria-label="Playback speed" data-i18n-aria="playbackSpeed">
+          <option value="1">1×</option>
+          <option value="10">10×</option>
+          <option value="30">30×</option>
+          <option value="60" selected>60×</option>
+          <option value="120">120×</option>
+          <option value="300">300×</option>
+          <option value="600">600×</option>
+          <option value="900">900×</option>
+        </select>
+        <button id="rewind-live" type="button" data-i18n="backToLive" hidden>Live</button>
+      </div>
+    </div>
+
+    <section class="panel" aria-label="Ride progress" data-i18n-aria="progressRegion">
+      <button id="panel-toggle" class="panel-toggle" type="button" aria-expanded="true" aria-controls="panel-details">
+        <span class="handle" aria-hidden="true"></span>
+        <span id="panel-toggle-label">Hide details</span>
+      </button>
+      <div id="notice" class="notice" hidden></div>
+
+      <div id="detail-head" class="detail-head" hidden>
+        <button id="back" class="back" type="button" data-i18n="allParticipants">All participants</button>
+        <h2 id="rider-name" class="rider-name"></h2>
+      </div>
+
+      <div id="progress" class="progress" hidden>
+        <div class="progress-head">
+          <span><strong id="pct">–</strong> <span id="pct-label" data-i18n="ofRoute">complete</span></span>
+          <span id="updated" class="muted">–</span>
+        </div>
+        <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="bar">
+          <div class="bar-fill" id="bar-fill"></div>
+        </div>
+      </div>
+
+      <div id="panel-details">
+        <div id="list-view">
+          <div class="list-head">
+            <h2 class="list-title" data-i18n="participants">Participants</h2>
+            <div class="sort" role="group" aria-label="Sort by" data-i18n-aria="sortBy">
+              <button id="sort-standing" type="button" data-sort="distance" data-i18n="sortDistance" aria-pressed="true">Distance</button>
+              <button type="button" data-sort="name" data-i18n="sortName" aria-pressed="false">Name</button>
+            </div>
+          </div>
+          <div class="list-tools">
+            <input id="toggle-all" class="vis" type="checkbox" checked aria-label="Select all" title="Select all"
+                   data-i18n-aria="selectAll" data-i18n-title="selectAll">
+            <input id="search" class="search" type="search" placeholder="Search participants" aria-label="Search participants"
+                   data-i18n-placeholder="searchParticipants" data-i18n-aria="searchParticipants" autocomplete="off">
+          </div>
+          <ol id="participants" class="participants"></ol>
+          <p id="no-matches" class="muted no-matches" data-i18n="noMatches" hidden>No matches.</p>
+        </div>
+        <dl id="stats" class="stats" hidden>
+          <div><dt data-i18n="distance">Distance</dt><dd><span id="dist">–</span><small> km</small></dd></div>
+          <div class="remain-cell">
+            <dt data-i18n="remaining">Remaining</dt>
+            <dd><span id="remain">–</span><small> km</small></dd>
+            <dd class="cell-note muted" id="remain-note"></dd>
+          </div>
+          <div><dt data-i18n="avgSpeed">Avg speed</dt><dd><span id="avg">–</span><small> km/h</small></dd></div>
+          <div>
+            <dt data-i18n="speed">Speed</dt>
+            <dd><span id="speed">–</span><small> km/h</small></dd>
+            <dd class="cell-note muted" id="speed-note"></dd>
+          </div>
+          <div><dt data-i18n="moving">Moving</dt><dd id="moving">–</dd></div>
+          <div><dt data-i18n="stopped">Stopped</dt><dd id="stopped">–</dd></div>
+          <div><dt data-i18n="elapsed">Elapsed</dt><dd id="elapsed">–</dd></div>
+          <div>
+            <dt data-i18n="battery">Battery</dt>
+            <dd><span id="battery">–</span><small> %</small></dd>
+            <dd class="cell-note muted" id="battery-note"></dd>
+          </div>
+          <div class="wide" id="eta-row"><dt><span data-i18n="eta">ETA</span> <small class="muted" data-i18n="etaNote">(at current average)</small></dt><dd id="eta">–</dd></div>
+          <div class="wide" id="record-row" hidden>
+            <dt><span id="record-label">Previous record</span> <small class="muted" id="record-time"></small></dt>
+            <dd id="record">–</dd>
+            <dd class="record-projection muted" id="record-projection"></dd>
+          </div>
+          <div class="wide" id="cp-row" hidden>
+            <dt data-i18n="checkpoints">Checkpoints</dt>
+            <dd>
+              <table class="cp-table">
+                <thead>
+                  <tr>
+                    <th scope="col"></th>
+                    <th scope="col" data-i18n="cpArrived">Arrived</th>
+                    <th scope="col" data-i18n="cpSegment">Segment</th>
+                    <th scope="col" data-i18n="cpTotal">Total</th>
+                  </tr>
+                </thead>
+                <tbody id="cp-table"></tbody>
+              </table>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
