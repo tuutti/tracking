@@ -28,18 +28,15 @@ try {
 // Without a language in config.js, the one the server wrote into <html lang> (PAGE_LANG).
 const lang = pickLanguage(cfg.lang ?? document.documentElement.lang, params.get('lang'), rememberedLang);
 const T = strings(lang);
-// The event to show (tracker-backend's events.json); the page needs ?event=<id>.
-const EVENT_ID = params.get('event');
+// The event to show: /event/<id> (tracker-backend), or ?event=<id> on a static host.
+const EVENT_ID = decodeURIComponent(location.pathname.match(/\/event\/([^/]+)\/?$/)?.[1] ?? '') || params.get('event');
 const EVENT_URL = `${cfg.apiUrl}/events/${encodeURIComponent(EVENT_ID)}`;
 const FINISH_TOLERANCE_M = 300;
 const OVERLAP_MS = 10 * 60 * 1000; // re-fetch a little history in case of late uploads
 const INTERPOLATE_MAX_MS = 30 * 60 * 1000; // rewound, glide between fixes up to this far apart
-// Part of the track URL, so answers still in the browser's cache aren't used.
-// Raise it when the format changes or cached answers must be dropped (3: frozen
-// events were cached for an hour, with titles since edited).
+// Part of the track URL; raise it to bypass cached answers.
 const TRACK_FORMAT = '3';
-// Participants without a colour of their own, in event order. The planned
-// route is blue, so no blues.
+// Participants without a colour of their own, in event order. No blues (the route).
 const PALETTE = [cfg.brandColor, '#2a9d8f', '#8e44ad', '#d4a017', '#d62f7f', '#5c7c2c', '#6d4c41', '#e07b00'];
 
 const $ = (id) => document.getElementById(id);
@@ -71,8 +68,7 @@ document.documentElement.style.setProperty('--brand', cfg.brandColor);
 document.documentElement.style.setProperty('--route', cfg.routeColor);
 translatePage(T, lang);
 
-// FI | EN in the top bar: reloads with ?lang=, keeping the other URL settings,
-// and remembers the choice for the next visit.
+// FI | EN in the top bar: reloads with ?lang= and remembers the choice.
 for (const code of LANGUAGES) {
   const a = document.createElement('a');
   const url = new URL(location.href);
@@ -106,16 +102,13 @@ function showEventInfo(data) {
 
 const map = L.map('map', { zoomControl: false, attributionControl: true });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
-// The panel's height changes as the list or details fill in, and with it the
-// map's; Leaflet only notices when told, else centring is off.
+// Tells Leaflet when the panel changes the map's size.
 new ResizeObserver(() => map.invalidateSize()).observe($('map'));
 
 L.tileLayer(cfg.tileUrl, { maxZoom: 18, attribution: cfg.tileAttribution }).addTo(map);
 
 const plannedLine = L.polyline([], { color: cfg.routeColor, weight: 4, opacity: 0.55 }).addTo(map);
-// Checkpoint events: parcours sections and checkpoint markers. The sections
-// get a pane above the riders' tracks (overlayPane, 400): everyone rides them,
-// so underneath they'd vanish.
+// Checkpoint events: parcours sections (above the riders' tracks) and checkpoint markers.
 const courseLayer = L.featureGroup().addTo(map);
 map.createPane('parcours').style.zIndex = 450;
 let cpMarkers = [];
@@ -142,8 +135,7 @@ $('btn-route').addEventListener('click', () => {
   fitRoute();
 });
 
-// Collapsible details on narrow screens, remembered per viewer. The progress
-// bar and notices stay visible; the map gets the freed space.
+// Collapsible details on narrow screens, remembered per viewer.
 const PANEL_KEY = 'panelCollapsed';
 const panel = document.querySelector('.panel');
 
@@ -155,7 +147,7 @@ function setCollapsed(collapsed) {
   try {
     localStorage.setItem(PANEL_KEY, collapsed ? '1' : '0');
   } catch {
-    // Storage blocked (private mode etc.): just don't remember.
+    // Storage blocked: don't remember.
   }
 }
 
@@ -198,7 +190,7 @@ function centerOnRider(zoomIn) {
   const points = state.riders.filter((r) => r.visible).map((r) => view(r).marker).filter(Boolean);
   if (!points.length) return;
   const bounds = L.latLngBounds(points);
-  // Only move when someone has left the view, so playback doesn't keep zooming.
+  // Only move when someone has left the view.
   if (!zoomIn && map.getBounds().pad(-0.1).contains(bounds)) return;
   map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
 }
@@ -207,7 +199,7 @@ function centerOnRider(zoomIn) {
 function select(id) {
   state.selected = id;
   const r = state.riders.find((q) => q.id === id);
-  if (r) r.visible = true; // the details are about them, so they're shown
+  if (r) r.visible = true;
   const url = new URL(location.href);
   if (id) url.searchParams.set('participant', id);
   else url.searchParams.delete('participant');
@@ -233,8 +225,7 @@ async function fetchCourseGpx() {
 }
 
 // A planned route, or for checkpoint events the checkpoints and parcours sections.
-// With cpRequired false the points are only shown: visits aren't checked,
-// and riders are ranked by the distance ridden.
+// With cpRequired false visits aren't checked and riders rank by distance ridden.
 function loadCourse(gpx, type, cpRadiusM, cpRequired) {
   if (type === 'checkpoints') {
     const cp = parseCourse(gpx, cpRadiusM ? { radiusM: cpRadiusM } : undefined);
@@ -254,8 +245,7 @@ function loadCourse(gpx, type, cpRadiusM, cpRequired) {
   state.ready = true;
 }
 
-// Parcours sections (dashed, in the route colour) and numbered checkpoints:
-// the start and the finish get a letter.
+// Parcours sections and numbered checkpoints; the start and the finish get a letter.
 function drawCourse() {
   const { checkpoints, sections } = state.cp;
   // One colour per item: the waypoints first, then the parcours sections.
@@ -263,7 +253,6 @@ function drawCourse() {
   // Tooltips take HTML; names come from the GPX.
   const tip = (text, color) => `<span style="color:${color}">${escapeHtml(text)}</span>`;
 
-  // Parcours sections: a solid line with a white casing, its name at the middle.
   sections.forEach((sec, k) => {
     const color = colorOf(checkpoints.length + k);
     for (const [c, weight, opacity] of [['#fff', 10, 0.95], [color, 6, 1]]) {
@@ -276,12 +265,10 @@ function drawCourse() {
   cpMarkers = checkpoints.map((c, i) => {
     const color = colorOf(i);
     const label = i === 0 ? T.startShort : i === last ? T.finishShort : String(i);
-    // The radius a visit has to come within; nothing to show if visits aren't checked.
     if (state.cp.required) {
       L.circle([c.lat, c.lon], { radius: c.radiusM, color, weight: 1, opacity: 0.6, fillOpacity: 0.08, interactive: false })
         .addTo(courseLayer);
     }
-    // A pin: its point on the checkpoint, the name beside its head.
     return L.marker([c.lat, c.lon], {
       icon: L.divIcon({
         className: 'cp cp-pin',
@@ -301,12 +288,10 @@ function drawCourse() {
 const escapeHtml = (text) =>
   text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-// Names next to checkpoints and parcours sections, always shown: on the left,
-// so riders' names (right) don't cover them.
+// Names of checkpoints and parcours sections, on the left of them.
 const CP_TIP = { permanent: true, direction: 'left', offset: [-12, 0], className: 'cp-tip' };
-// Start, checkpoints, finish and parcours sections, one colour each, in that
-// order (repeating after the last). None is a participant's colour.
-// Ordered so neighbours differ in hue as well as shade.
+// Start, checkpoints, finish and parcours sections, one colour each, repeating.
+// None is a participant's colour.
 const COURSE_COLORS = [
   '#1b7a3e', '#3a6ea5', '#b5179e', '#0096c7', '#9a031e', '#5a4fcf',
   '#2b2d42', '#b07d00', '#7b6d8d', '#00838f',
@@ -363,8 +348,7 @@ function removeRider(r) {
   r.row?.parentElement.remove();
 }
 
-// The ridden track: a darker shade of the participant's colour, so it stands
-// out over the covered route.
+// The ridden track: a darker shade of the participant's colour.
 function darker(hex) {
   const n = parseInt(hex.slice(1), 16);
   const ch = (shift) => Math.round(((n >> shift) & 255) * 0.65);
@@ -389,8 +373,7 @@ function snap(r, p) {
       p.cps = r.cpTracker.next; // checkpoints reached by now, for rewinding
     }
     r.progress = r.odometer.add(p);
-    // Without a route every fix counts; `along` (the distance ridden) feeds
-    // the speed estimates.
+    // `along` (the distance ridden) feeds the speed estimates.
     Object.assign(p, { along: r.progress, offRoute: false, offBy: 0 });
   } else {
     Object.assign(p, r.tracker.add(p));
@@ -405,8 +388,7 @@ function hasFinished(r) {
   return state.cp ? !!r.cpTracker?.finished : state.route.length - r.progress <= FINISH_TOLERANCE_M;
 }
 
-// A participant's start changed on the server: forget their track, so it's
-// loaded again from the new start.
+// A participant's start changed on the server: forget their track.
 function restartRider(r, rideStart) {
   r.rideStart = rideStart;
   r.positions = [];
@@ -462,9 +444,7 @@ function syncRiders(data) {
 // ---------- Rewind ----------
 
 // What the page shows of a participant: now, or as it was at state.rewindT.
-// Rewound, "now" is that moment, so every stat is computed as followers saw
-// it then. The stats use the fixes up to that moment; the marker and the
-// covered line (marker, drawProgress) glide between fixes so playback doesn't jump.
+// The stats use the fixes up to that moment; the marker glides between them.
 function view(r) {
   if (state.rewindT == null) {
     const last = r.positions.at(-1);
@@ -531,8 +511,8 @@ $('rewind-live').addEventListener('click', () => {
   redraw();
 });
 
-// Playback: the rewound moment moves forward at play.speed × real time and
-// turns back to live at the end. Playing from live starts over from the start.
+// Playback: the rewound moment moves forward at play.speed × real time, back to
+// live at the end. Playing from live starts from the start.
 const play = { on: false, speed: Number($('rewind-speed').value), lastFrame: 0, lastDraw: 0 };
 const PLAY_DRAW_MS = 100; // redraw at most this often while playing
 
@@ -551,7 +531,7 @@ $('rewind-speed').addEventListener('change', (e) => {
 
 function step(ts) {
   if (!play.on || state.rewindT == null) return;
-  // Capped, so a background tab (no frames) doesn't jump ahead on return.
+  // Capped for a background tab.
   state.rewindT += Math.min(ts - play.lastFrame, 250) * play.speed;
   play.lastFrame = ts;
   if (state.rewindT >= rewindEnd()) {
@@ -581,7 +561,7 @@ function rewindEnd() {
 // The event is over without reaching the finish (abandoned, or a test).
 const isEnded = (now) => state.rideEnd != null && now >= state.rideEnd;
 
-// Slider input fires faster than the track can be redrawn; once per frame.
+// Slider input, redrawn once per frame.
 let frame = 0;
 function redraw() {
   cancelAnimationFrame(frame);
@@ -647,8 +627,7 @@ function drawTrack() {
   }
 }
 
-// Where a participant stands at the shown moment; shared by the list, the
-// details, the markers and the status.
+// Where a participant stands at the shown moment.
 function summary(r) {
   const v = view(r);
   const now = v.now;
@@ -662,7 +641,7 @@ function summary(r) {
     ...common,
     ...s,
     ended,
-    over: s.finished || ended, // nothing more to wait for
+    over: s.finished || ended,
     avgKmh: movingMs > 0 ? s.done / 1000 / (movingMs / 3.6e6) : null,
   };
 }
@@ -706,7 +685,6 @@ function render() {
   const sel = selectedRider();
   const now = state.rewindT ?? Date.now();
 
-  // Fading the others only means something while someone is on the way.
   const anyActive = [...sums.values()].some((s) => s.last && !s.over && !s.stale);
   for (const [r, s] of sums) renderMarker(r, s, sel, anyActive);
   if (state.cp) renderCheckpoints(sel, sel && sums.get(sel));
@@ -741,8 +719,7 @@ function renderMarker(r, s, sel, anyActive) {
     return;
   }
   const ll = s.v.marker;
-  // Only riders still on the way pulse. Greyed out only while a position is
-  // overdue; once over, the colour stays so riders can still be told apart.
+  // Only riders still on the way pulse; grey only while a position is overdue.
   const look = s.over ? 'idle' : s.stale ? 'stale' : 'active';
   if (!r.marker) {
     r.marker = L.marker(ll, { icon: riderIcon(r, look), keyboard: false, title: r.name })
@@ -756,12 +733,11 @@ function renderMarker(r, s, sel, anyActive) {
     r.marker.setIcon(riderIcon(r, look));
     r.markerLook = look;
   }
-  // Riders still on the way stand out: the others are faded and drawn below
-  // them, except the one shown.
+  // Riders no longer on the way are faded and drawn below, except the one shown.
   const dim = anyActive && look !== 'active' && sel !== r;
   r.marker.setZIndexOffset(sel === r ? 1000 : dim ? 0 : 500);
   r.marker.getElement()?.classList.toggle('dim', dim);
-  // With several participants, names stay on the map so they can be told apart.
+  // With several participants, names stay on the map.
   const multi = state.riders.length > 1;
   const tip = multi ? r.name : `${r.name} · ${fmtTime(s.last.t)}`;
   const tooltip = r.marker.getTooltip();
@@ -814,7 +790,7 @@ function setSort(by) {
   try {
     localStorage.setItem(SORT_KEY, by);
   } catch {
-    // Storage blocked: just don't remember.
+    // Storage blocked: don't remember.
   }
 }
 
@@ -844,8 +820,7 @@ function matching() {
 
 $('search').addEventListener('input', () => render());
 
-// Shows or hides everyone the search matches. Checked when they're all shown,
-// partly checked when only some are (clicking then shows them all).
+// Shows or hides everyone the search matches.
 $('toggle-all').addEventListener('change', (e) => setVisible(matching(), e.target.checked));
 
 // Everyone with the distance ridden, furthest first or by name.
@@ -890,7 +865,7 @@ function renderList(sums) {
   $('toggle-all').disabled = !shown.length;
   $('toggle-all').checked = visible > 0 && visible === shown.length;
   $('toggle-all').indeterminate = visible > 0 && visible < shown.length;
-  // Reorder only when the order changed, so a row isn't moved under a click.
+  // Reorder only when the order changed.
   const rows = order.map(([r]) => r.row.parentElement);
   if (rows.some((li, i) => list.children[i] !== li)) list.replaceChildren(...rows);
 }
@@ -1026,7 +1001,7 @@ function renderBattery(v) {
   $('battery-note').textContent = p?.charging ? T.charging : '';
 }
 
-// The shown participant against the previous record; r null hides it.
+// The shown participant against the previous record; null r hides it.
 function renderRecord(r, { now, ghostAt, ref, done, remaining, avgKmh, finished, ended } = {}) {
   const rec = state.record;
   const row = $('record-row');
@@ -1059,8 +1034,7 @@ function renderRecord(r, { now, ghostAt, ref, done, remaining, avgKmh, finished,
     recordMarker.setLatLng(ghost);
   }
 
-  // Compare at the last on-route fix: how long the record took to reach the
-  // same share of the route, minus how long the rider took.
+  // At the last on-route fix: the record's time to the same share, minus the rider's.
   const el = $('record');
   const proj = $('record-projection');
   if (!ref || done < 1000) {
@@ -1213,9 +1187,7 @@ setInterval(() => state.ready && render(), 15000);
 
 // ---------- Start ----------
 
-// The event from /events: title, subtitle, record and participants, so the
-// page is filled in before the first track arrives. Null if it can't be had;
-// the track brings the same later.
+// The event from /events, to fill in the page before the first track. Null on failure.
 async function loadEvent() {
   try {
     const res = await fetch(`${cfg.apiUrl}/events`);
@@ -1254,8 +1226,7 @@ function showError(text) {
   try {
     let gpx;
     [gpx, ev] = await Promise.all([fetchCourseGpx(), loadEvent()]);
-    // The event says how to read the GPX; without the event list, the first
-    // track answer does.
+    // The event (or else the first track answer) says how to read the GPX.
     const info = ev ?? (await fetchTrack(null).catch(() => ({})));
     loadCourse(gpx, info.type ?? 'route', info.cpRadiusM, info.cpRequired);
   } catch (err) {

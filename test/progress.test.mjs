@@ -109,7 +109,7 @@ test('stop at the start and an ongoing stop count until now; moving is not exten
     { t: T0 + 7 * MIN, lat: 60.00018, lon: 25 },
   ];
   const s = movingStats(still, { start, now: T0 + 11 * MIN });
-  assert.equal(s.stoppedMs, 11 * MIN, 'start→first fix, between fixes, and last fix→now');
+  assert.equal(s.stoppedMs, 11 * MIN, 'start->first fix, between fixes, and last fix->now');
   assert.equal(s.movingMs, 0);
   assert.equal(s.stoppedSince, T0);
   assert.equal(movingStats(still).stoppedMs, 5 * MIN, 'without start/now only the gap between fixes');
@@ -125,7 +125,7 @@ test('stop at the start and an ongoing stop count until now; moving is not exten
   const away = [{ t: T0 + 2 * MIN, lat: 61, lon: 25 }, { t: T0 + 7 * MIN, lat: 61, lon: 25 }];
   const a = movingStats(away, { start, now: T0 + 11 * MIN });
   assert.equal(a.movingMs, 0);
-  assert.equal(a.stoppedMs, 9 * MIN, 'between fixes and last fix→now only');
+  assert.equal(a.stoppedMs, 9 * MIN, 'between fixes and last fix->now only');
 });
 
 test('recent speed uses along-route distance over the window', () => {

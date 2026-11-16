@@ -1,5 +1,4 @@
-// Route geometry and along-route progress. No DOM or map dependencies, so it
-// can be unit-tested in Node.
+// Route geometry and along-route progress.
 
 const R = 6371008.8;
 const rad = (d) => (d * Math.PI) / 180;
@@ -60,9 +59,8 @@ export function pointAt(route, d) {
   return [pts[i][0] + t * (pts[i + 1][0] - pts[i][0]), pts[i][1] + t * (pts[i + 1][1] - pts[i][1])];
 }
 
-// The previous record ridden at a constant pace over this route. Compares by
-// share of the route, so a record ridden on a different-length line still
-// compares fairly. distanceAt(elapsed ms) -> m, timeAt(distance m) -> elapsed ms.
+// The previous record at a constant pace, by share of the route.
+// distanceAt(elapsed ms) -> m, timeAt(distance m) -> elapsed ms.
 export function recordPace(length, recordMs) {
   return {
     distanceAt: (ms) => Math.min(length, Math.max(0, (ms / recordMs) * length)),
@@ -70,19 +68,12 @@ export function recordPace(length, recordMs) {
   };
 }
 
-// Splits the ride into moving and stopped time. Each interval between two
-// consecutive positions counts as moving if the rider covered at least
-// minKmh in a straight line; GPS jitter while standing still stays well below
-// that. A signal gap is judged the same way: far away afterwards means riding
-// through a dead zone, same place means a stop (e.g. sleep).
+// Splits the ride into moving and stopped time: an interval between two
+// positions is moving if the rider covered at least minKmh in a straight line.
 // positions: [{ t, lat, lon }] sorted by t.
-// start: { t, lat, lon } of the ride start (e.g. the route's first point), so
-//   the time before the first fix is judged too. Only used when the first fix
-//   is within startRadiusM of it; otherwise that time is unknown and skipped
-//   (e.g. tracking started away from the start).
-// now: when given and the rider is stopped, the stop lasts until now: phones
-//   often send nothing while stationary. Moving time is never extended, since
-//   silence while moving is unknown until the next positions arrive.
+// start: { t, lat, lon } of the ride start; the time before the first fix
+//   counts only when that fix is within startRadiusM of it.
+// now: while stopped, the stop lasts until now.
 // -> { movingMs, stoppedMs, stoppedSince (ms timestamp, or null while moving) }
 export function movingStats(positions, { minKmh = 3, start = null, now = null, startRadiusM = 1000 } = {}) {
   let movingMs = 0;
@@ -124,10 +115,8 @@ export function recentSpeed(positions, windowMs = 30 * 60 * 1000, minMs = 10 * 6
   return Math.max(0, (last.along - first.along) / 1000) / (dt / 3.6e6);
 }
 
-// Speed to show for the latest fix. Only GPS fixes carry a speed: Wi-Fi and
-// cell positions (accuracy worse than gpsAccuracyM) come with speed 0 even
-// while riding. For those, the along-route speed over the last few minutes is
-// used instead, marked as estimated.
+// Speed at the latest fix. Fixes worse than gpsAccuracyM (Wi-Fi, cell) report 0,
+// so for those the recent along-route speed is used, marked as estimated.
 // positions: [{ t, spd, acc, along }] sorted by t.
 // -> { kmh, estimated } or null when there's nothing to go on.
 export function currentSpeed(positions, { gpsAccuracyM = 30, windowMs = 5 * 60 * 1000, minMs = 2 * 60 * 1000 } = {}) {
@@ -138,9 +127,8 @@ export function currentSpeed(positions, { gpsAccuracyM = 30, windowMs = 5 * 60 *
   return kmh == null ? null : { kmh, estimated: true };
 }
 
-// Where the rider was at time t between consecutive fixes a and b
-// (a.t <= t <= b.t), for smooth rewinding and playback. With both fixes on
-// the route it glides along the route; otherwise in a straight line.
+// Where the rider was at time t between fixes a and b: along the route when
+// both are on it, otherwise in a straight line.
 // a, b: { t, lat, lon, offRoute, progress } -> { latlng, progress }
 export function interpolate(route, a, b, t) {
   const f = b.t > a.t ? Math.min(1, Math.max(0, (t - a.t) / (b.t - a.t))) : 0;
@@ -182,14 +170,9 @@ function candidates(route, p, lo, hi) {
   return out;
 }
 
-// Snaps positions to the planned route one at a time, in time order.
-//
-// Sparse fixes cut corners, so straight-line distance between them
-// underestimates; snapping gives the distance along the road instead.
-// The search is limited to the part of the route the rider could plausibly
-// have reached since the last on-route fix, which stops a fix from snapping
-// to another part of the route that passes nearby (loops, out-and-backs,
-// figure-eights). Progress never goes backwards.
+// Snaps positions to the planned route in time order. A fix is only searched
+// for in the part of the route reachable since the last on-route fix.
+// Progress never goes backwards.
 export function createProgressTracker(route, opts) {
   const o = {
     startTime: 0, // ms; ride start, the first fix is searched from here
@@ -218,9 +201,8 @@ export function createProgressTracker(route, opts) {
       const tolerance = o.offRouteM + Math.min(pos.acc || 0, 500);
       if (best.dist > tolerance) return { along: null, offRoute: true, offBy: best.dist };
 
-      // Where the route runs close to itself (out-and-back on the same road, a
-      // crossing), prefer segments ahead of current progress, and among those
-      // the nearest, with a small penalty (2 m per km) for being further ahead.
+      // Prefer segments ahead of current progress, the nearest first, with a
+      // penalty of 2 m per km for being further ahead.
       const score = (c) => c.dist + 0.002 * Math.max(0, c.along - progress);
       const ahead = cands.filter((c) => c.dist <= tolerance && c.along >= progress - 200);
       const pick = ahead.length ? ahead.reduce((m, c) => (score(c) < score(m) ? c : m)) : best;
@@ -232,11 +214,11 @@ export function createProgressTracker(route, opts) {
   };
 }
 
-// ---------- Free-route events: control points instead of a route ----------
+// ---------- Checkpoint events ----------
 
-// A course GPX: waypoints in file order are the start, the control points and
-// the finish; each track is a parcours section (drawn only, not checked).
-// A waypoint may set its own capture radius in <extensions><radius>.
+// A course GPX: waypoints in file order are the start, the checkpoints and
+// the finish, each track a parcours section. <extensions><radius> sets a
+// waypoint's own radius.
 // -> { checkpoints: [{ name, lat, lon, radiusM }], sections: [{ name, pts: [[lat, lon]] }] }
 export function parseCourse(text, { radiusM = 300 } = {}) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
@@ -260,12 +242,10 @@ export function parseCourse(text, { radiusM = 300 } = {}) {
   return { checkpoints, sections };
 }
 
-// Distance ridden from the fixes themselves, for events without a route.
-// Coarse fixes (Wi-Fi/cell, worse than maxAccM) are skipped, as are jumps
-// faster than maxKmh; movement within the fixes' accuracy is jitter and
-// doesn't count until the rider has really moved away. After `resetAfter`
-// rejected jumps in a row the new place is taken as is (without adding the
-// jump), so one bad fix can't freeze the odometer.
+// Distance ridden from the fixes, for events without a route. Skips fixes
+// worse than maxAccM, jumps faster than maxKmh and movement within the fixes'
+// accuracy. After `resetAfter` rejected jumps in a row the new place is taken
+// without adding the jump.
 // add({ t, lat, lon, acc }) -> distance so far (m)
 export function createOdometer({ maxAccM = 50, maxKmh = 80, minMoveM = 10, resetAfter = 3 } = {}) {
   let distance = 0;
@@ -283,8 +263,7 @@ export function createOdometer({ maxAccM = 50, maxKmh = 80, minMoveM = 10, reset
       }
       const d = haversine([anchor.lat, anchor.lon], [pos.lat, pos.lon]);
       if (d < Math.max(minMoveM, anchor.acc || 0, pos.acc || 0)) {
-        // Still here: a jump right after this must be judged from now, not
-        // from when the rider arrived.
+        // Still here: judge the next jump from now.
         anchor = { ...anchor, t: pos.t };
         return distance;
       }
@@ -304,11 +283,9 @@ export function createOdometer({ maxAccM = 50, maxKmh = 80, minMoveM = 10, reset
   };
 }
 
-// Visits to the control points, in their fixed order. The first checkpoint is
-// the start, reached at startTime; the last is the finish. Only the next one
-// is looked for, so riding past a later checkpoint early doesn't count. A
-// visit is the first fix within the checkpoint's radius whose accuracy is no
-// worse than the radius, so a coarse Wi-Fi/cell fix can't fake one.
+// Visits to the checkpoints, in order. The first is the start, reached at
+// startTime; the last is the finish. A visit is the first fix inside the
+// radius whose accuracy is no worse than the radius.
 // add({ t, lat, lon, acc }); arrivals: [ms per checkpoint reached]
 export function createCheckpointTracker(checkpoints, { startTime }) {
   const arrivals = checkpoints.length ? [startTime] : [];
@@ -331,8 +308,7 @@ export function createCheckpointTracker(checkpoints, { startTime }) {
   };
 }
 
-// Straight-line distance still to go: from here to checkpoint `next`, then
-// checkpoint to checkpoint to the finish. A lower bound of the real distance.
+// Straight-line distance from here via checkpoint `next` and the rest to the finish.
 export function remainingVia(checkpoints, next, here) {
   if (next >= checkpoints.length) return 0;
   let d = here ? haversine(here, [checkpoints[next].lat, checkpoints[next].lon]) : 0;

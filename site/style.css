@@ -120,7 +120,7 @@ body {
   background: var(--brand);
   cursor: pointer;
 }
-/* Triangle (play) or two bars (pause), drawn in CSS so no icon font is needed. */
+/* Triangle (play) or two bars (pause). */
 .rewind .play::before {
   content: "";
   position: absolute;
@@ -237,7 +237,7 @@ body {
 .stats dd.behind { color: var(--err-text); }
 .stats dd.record-projection { margin-top: 2px; font-size: 13px; font-weight: 400; white-space: normal; }
 
-/* Participant list, furthest first; each row opens that participant's details. */
+/* Participant list. */
 .list-title, .rider-name { margin: 0; font-size: 15px; }
 .list-title { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 .list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -413,7 +413,7 @@ body {
 
 .leaflet-container { font: inherit; }
 .leaflet-tooltip.record-tip, .leaflet-tooltip.rider-tip { font-size: 11px; padding: 1px 5px; }
-/* Riders' names: faint, so a crowded map stays readable. */
+/* Riders' names. */
 .leaflet-tooltip.rider-tip {
   font-weight: 500;
   color: #4a4f57;
@@ -422,5 +422,5 @@ body {
   box-shadow: none;
 }
 .leaflet-tooltip.rider-tip::before { display: none; }
-/* Checkpoint and parcours names, always shown: on the left, so riders' names (right) don't cover them. */
+/* Checkpoint and parcours names, on the left. */
 .leaflet-tooltip.cp-tip { font-size: 11px; padding: 1px 5px; color: var(--route, #3a6ea5); font-weight: 600; }

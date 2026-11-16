@@ -1,14 +1,12 @@
 #!/usr/bin/env node
-// Makes the image link previews show for an event (previews/<id>.jpg):
+// Makes the image link previews show for an event (previews/<id>.jpg, or with
+// --events DIR, DIR/<id>/preview.jpg: tracker-backend's event folders):
 // the page's map with the whole route and the riders' tracks (no markers),
 // under the event's title. A screenshot of the real page in headless Chromium.
 //
 //   node tools/preview-image.mjs --page https://track.example.com my-ride-2026
 //   node tools/preview-image.mjs                 # every event, from the local stack
-//
-// Put the image in the server's PREVIEWS_PATH (tracker-backend): it adds the
-// image to the page's preview tags once the file exists. The image is the
-// moment it was taken: during a ride, run it again to update it.
+//   node tools/preview-image.mjs --events ../backend/events my-ride-2026
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -19,8 +17,8 @@ const { values: opt, positionals: ids } = parseArgs({
   allowPositionals: true,
   options: {
     page: { type: 'string', default: 'http://localhost:8000' },
-    // Relative to where it's run; the server serves it from its PREVIEWS_PATH.
     out: { type: 'string', default: 'previews' },
+    events: { type: 'string' },
     lang: { type: 'string' }, // default: the page's own (PAGE_LANG)
     chromium: { type: 'string', default: 'chromium' },
   },
@@ -37,10 +35,8 @@ async function eventIds() {
   throw new Error(`No event ids given, and ${page}/events could not be read`);
 }
 
-// Just the title and the map: the controls, the panel, the timeline and the
-// riders' markers and names hidden (their tracks stay), the title large enough
-// to read in a small preview. --s undoes the page's
-// scale (see SCALES), so the title comes out the same size in every image.
+// Just the title and the map with the tracks. --s undoes the page's scale
+// (see SCALES), so the title is the same size in every image.
 const PREVIEW_CSS = `
   :root { --s: calc(1 / var(--scale, 1)); }
   .top-right, .panel, .map-buttons, .rewind, .leaflet-control-zoom, #notice { display: none !important; }
@@ -51,10 +47,8 @@ const PREVIEW_CSS = `
   .leaflet-control-attribution { font-size: calc(12px * var(--s)) !important; }
 `;
 
-// Leaflet zooms in whole steps, so a long route may fill only half the map.
-// A bigger page scaled down to the image's size fits it one step further out
-// with room to spare: each scale is tried, and the one where the route fills
-// the most of the map is used. Map labels shrink with it, so 1 wins ties.
+// Leaflet zooms in whole steps, so each page scale is tried and the one where
+// the route fills the most of the map is used; 1 wins ties.
 const SCALES = [1, 0.85, 0.7, 0.6, 0.5];
 
 // How much of the map the route, tracks and checkpoints fill (1 = edge to edge).
@@ -124,9 +118,7 @@ async function until(call, expression, ms) {
 // Loaded: the event's title is in, the tracks are drawn and no tile is still coming.
 const TILES_DONE = `document.querySelector('.leaflet-tile-loaded') && !document.querySelector('.leaflet-tile:not(.leaflet-tile-loaded)')`;
 
-// Runs in the page once parsed, before its own script (module scripts wait for
-// the parse): the preview styles, so the map has its final size from the
-// start, and no animations, so no tiles of an earlier zoom are left fading out.
+// Runs before the page's own script: the preview styles and no animations.
 const PREPARE = `document.addEventListener('readystatechange', () => {
   if (document.readyState !== 'interactive') return;
   const style = document.createElement('style');
@@ -137,9 +129,8 @@ const PREPARE = `document.addEventListener('readystatechange', () => {
 
 const evaluate = async (call, expression) => (await call('Runtime.evaluate', { expression, returnByValue: true })).result.value;
 
-// A page `1 / scale` times the image's size; the screenshot scales it down.
-// (Scaling the page itself, with deviceScaleFactor, leaves hairline gaps
-// between the map tiles.)
+// A page `1 / scale` times the image's size; the screenshot scales it down
+// (deviceScaleFactor leaves gaps between the tiles).
 const setScale = (call, scale) =>
   call('Emulation.setDeviceMetricsOverride', {
     width: Math.round(WIDTH / scale), height: Math.round(HEIGHT / scale), deviceScaleFactor: 1, mobile: false,
@@ -159,7 +150,7 @@ async function fitAt(call, scale) {
 // Opens the event's page and waits until it has loaded.
 async function open(call, id) {
   await call('Page.navigate', { url: `${page}/?event=${encodeURIComponent(id)}${opt.lang ? `&lang=${encodeURIComponent(opt.lang)}` : ''}` });
-  const loaded = await until(call, `!document.querySelector('#live')?.textContent.includes('…') && document.querySelector('.leaflet-overlay-pane path')`, 20000);
+  const loaded = await until(call, `!document.querySelector('#live')?.textContent.includes('...') && document.querySelector('.leaflet-overlay-pane path')`, 20000);
   if (!loaded) throw new Error('the page did not finish loading');
   const failed = await evaluate(call, `document.querySelector('.notice.err')?.textContent ?? ''`);
   if (failed) throw new Error(failed);
@@ -173,8 +164,7 @@ async function shoot(call, id) {
     const coverage = await fitAt(call, scale);
     if (coverage > best.coverage + 0.02) best = { scale, coverage };
   }
-  // Afresh at the chosen scale: the tries leave tiles of other zooms behind,
-  // which show as faint lines along the edges of the newer ones.
+  // Afresh at the chosen scale, without the tries' leftover tiles.
   await setScale(call, best.scale);
   await open(call, id);
   await evaluate(call, `document.documentElement.style.setProperty('--scale', ${best.scale})`);
@@ -187,13 +177,13 @@ async function shoot(call, id) {
     quality: 82,
     clip: { x: 0, y: 0, width: Math.round(WIDTH / best.scale), height: Math.round(HEIGHT / best.scale), scale: best.scale },
   });
-  const file = path.join(opt.out, `${id}.jpg`);
+  const file = opt.events ? path.join(opt.events, id, 'preview.jpg') : path.join(opt.out, `${id}.jpg`);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
   return { file, scale: best.scale };
 }
 
 const events = ids.length ? ids : await eventIds();
-fs.mkdirSync(opt.out, { recursive: true });
 const { call, close } = await launch();
 let failures = 0;
 try {

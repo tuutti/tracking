@@ -7,7 +7,7 @@ const STRINGS = {
     docTitle: 'Pyöräilyn seuranta',
     description: 'Pyöräilijöiden sijainti ja eteneminen reaaliajassa.',
     heading: 'Seuranta',
-    loading: 'Ladataan…',
+    loading: 'Ladataan...',
     map: 'Kartta',
     progressRegion: 'Eteneminen',
     language: 'Kieli',
@@ -83,7 +83,7 @@ const STRINGS = {
     projectedTime: (d) => `Arvioitu loppuaika ${d}`,
 
     serverDown: (ago) => `Seurantapalvelimeen ei saada yhteyttä. Näytetään ${ago} haetut tiedot, yritetään uudelleen.`,
-    serverDownNoData: 'Seurantapalvelimeen ei saada yhteyttä. Yritetään uudelleen…',
+    serverDownNoData: 'Seurantapalvelimeen ei saada yhteyttä. Yritetään uudelleen...',
     startsAt: (time, d) => `Lähtö ${time} (${d} päästä).`,
     waitingFirst: 'Odotetaan ensimmäistä sijaintia.',
     noSignal: (d) =>
@@ -91,7 +91,7 @@ const STRINGS = {
       'Se tallentaa sijainnit, ja puuttuvat sijainnit tulevat näkyviin, kun yhteys palaa.',
     offRoute: (km) => `Poikettu suunnitellulta reitiltä (${km} km). Matkan laskenta jatkuu, kun palataan reitille.`,
     routeError: (msg) => `Suunniteltua reittiä ei voitu ladata (${msg}).`,
-    noEvent: 'Tapahtuma puuttuu: lisää osoitteeseen ?event=<tunnus>.',
+    noEvent: 'Osoitteesta puuttuu tapahtuma.',
   },
 
   en: {
@@ -99,7 +99,7 @@ const STRINGS = {
     docTitle: 'Live ride tracker',
     description: 'Live position and progress of the riders.',
     heading: 'Live tracker',
-    loading: 'Loading…',
+    loading: 'Loading...',
     map: 'Map',
     progressRegion: 'Ride progress',
     language: 'Language',
@@ -175,7 +175,7 @@ const STRINGS = {
     projectedTime: (d) => `Projected finish time ${d}`,
 
     serverDown: (ago) => `Can't reach the tracking server. Showing data from ${ago}, retrying.`,
-    serverDownNoData: "Can't reach the tracking server. Retrying…",
+    serverDownNoData: "Can't reach the tracking server. Retrying...",
     startsAt: (time, d) => `The ride starts ${time} (in ${d}).`,
     waitingFirst: 'Waiting for the first position.',
     noSignal: (d) =>
@@ -183,7 +183,7 @@ const STRINGS = {
       'It keeps recording and the missing positions will appear once it reconnects.',
     offRoute: (km) => `Currently ${km} km off the planned route. Distance resumes once back on route.`,
     routeError: (msg) => `Couldn't load the planned route (${msg}).`,
-    noEvent: 'No event given: add ?event=<id> to the address.',
+    noEvent: 'No event given in the address.',
   },
 };
 
@@ -198,7 +198,7 @@ export function pickLanguage(configured, urlParam, remembered = null) {
 
 export const strings = (lang) => STRINGS[lang];
 
-// A config text is either a plain string or { en: '…', fi: '…' }; a missing
+// A config text is either a plain string or { en: '...', fi: '...' }; a missing
 // language falls back to English, then to whichever is given.
 export function localized(value, lang) {
   if (value && typeof value === 'object') return value[lang] ?? value.en ?? Object.values(value)[0] ?? '';
