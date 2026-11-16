@@ -1,14 +1,6 @@
 # Ride tracker page
 
-A live-tracking page for ultra-distance rides: a map and each rider's progress. Static files, no build step
-(Leaflet from a CDN, plain ES modules). The data comes from a small read-only API, such as
-[tracker-backend](https://github.com/tuutti/traccar) in front of a self-hosted Traccar.
-
-```
-site/    the page: index.html, app.js, progress.js, i18n.js, config.js, style.css
-tools/   preview-image.mjs: link preview image for an event
-test/    node --test test/
-```
+A live-tracking page for ultra-distance rides.
 
 ## Setup
 
