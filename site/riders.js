@@ -1,11 +1,24 @@
 // The participants: their positions, progress and track lines.
 import { cfg, FINISH_TOLERANCE_M, state } from './context.js';
 import { map } from './map.js';
-import { createCheckpointTracker, createOdometer, createProgressTracker } from './progress.js';
+import {
+  createCheckpointTracker,
+  createOdometer,
+  createProgressTracker,
+} from './progress.js';
 
 // Participants without a colour of their own, in event order. No blues (the route).
 // Distinct from each other and from the route's light blue.
-const PALETTE = ['#c8102e', '#e07b00', '#1a7f37', '#b5179e', '#00838f', '#6a3fa0', '#8a5a00', '#0b1f3a'];
+const PALETTE = [
+  '#c8102e',
+  '#e07b00',
+  '#1a7f37',
+  '#b5179e',
+  '#00838f',
+  '#6a3fa0',
+  '#8a5a00',
+  '#0b1f3a',
+];
 
 // One participant: its track, progress and map layers.
 export function addRider(p, index) {
@@ -22,8 +35,17 @@ export function addRider(p, index) {
     odometer: null, // distance from the fixes ('checkpoints' events)
     progress: 0, // m: along the route, or ridden
     lastOnRoute: null, // last position that snapped to the route
-    trackLine: L.polyline([], { color: darker(color), weight: 2, opacity: 0.8 }).addTo(map),
-    gapLine: L.polyline([], { color: darker(color), weight: 2, opacity: 0.7, dashArray: '4 8' }).addTo(map),
+    trackLine: L.polyline([], {
+      color: darker(color),
+      weight: 2,
+      opacity: 0.8,
+    }).addTo(map),
+    gapLine: L.polyline([], {
+      color: darker(color),
+      weight: 2,
+      opacity: 0.7,
+      dashArray: '4 8',
+    }).addTo(map),
     marker: null,
     markerLook: null,
     visible: true, // shown on the map (the list's checkbox)
@@ -43,14 +65,17 @@ function removeRider(r) {
 
 // The ridden track: a darker shade of the participant's colour.
 function darker(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  const ch = (shift) => Math.round(((n >> shift) & 255) * 0.65);
-  return `rgb(${ch(16)} ${ch(8)} ${ch(0)})`;
+  const ch = (i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.65);
+  return `rgb(${ch(1)} ${ch(3)} ${ch(5)})`;
 }
 
 function resetTracker(r) {
   if (state.cp) {
-    r.cpTracker = state.cp.required ? createCheckpointTracker(state.cp.checkpoints, { startTime: r.rideStart }) : null;
+    r.cpTracker = state.cp.required
+      ? createCheckpointTracker(state.cp.checkpoints, {
+          startTime: r.rideStart,
+        })
+      : null;
     r.odometer = createOdometer();
   } else {
     r.tracker = createProgressTracker(state.route, { startTime: r.rideStart });
@@ -71,14 +96,18 @@ function snap(r, p) {
   } else {
     Object.assign(p, r.tracker.add(p));
   }
-  if (!p.offRoute) r.lastOnRoute = p;
+  if (!p.offRoute) {
+    r.lastOnRoute = p;
+  }
   r.progress = state.cp ? r.progress : r.tracker.progress;
   p.progress = r.progress; // for rewinding
 }
 
 // Whether a participant has reached the finish (by their latest position).
 export function hasFinished(r) {
-  return state.cp ? !!r.cpTracker?.finished : state.route.length - r.progress <= FINISH_TOLERANCE_M;
+  return state.cp
+    ? !!r.cpTracker?.finished
+    : state.route.length - r.progress <= FINISH_TOLERANCE_M;
 }
 
 // A participant's start changed on the server: forget their track.
@@ -92,9 +121,20 @@ function restartRider(r, rideStart) {
 export function merge(r, positions) {
   const lastT = r.positions.at(-1)?.t ?? -Infinity;
   const fresh = positions
-    .map(([id, t, lat, lon, spd, acc, batt = null, charging = 0]) => ({ id, t, lat, lon, spd, acc, batt, charging }))
+    .map(([id, t, lat, lon, spd, acc, batt = null, charging = 0]) => ({
+      id,
+      t,
+      lat,
+      lon,
+      spd,
+      acc,
+      batt,
+      charging,
+    }))
     .filter((p) => !r.ids.has(p.id) && !(p.acc > cfg.maxAccuracyM));
-  if (!fresh.length) return false;
+  if (!fresh.length) {
+    return false;
+  }
 
   fresh.forEach((p) => r.ids.add(p.id));
   r.positions.push(...fresh);
@@ -121,7 +161,9 @@ export function syncRiders(data) {
     }
     r.name = p.name || p.id;
     // A participant the server couldn't fetch this time keeps what it has.
-    if (p.error) return r;
+    if (p.error) {
+      return r;
+    }
     const rideStart = Date.parse(p.rideStart);
     if (Number.isFinite(rideStart) && rideStart !== r.rideStart) {
       restartRider(r, rideStart);

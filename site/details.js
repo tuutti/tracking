@@ -1,31 +1,59 @@
 // One participant's details: progress, stats, checkpoints and the record.
-import { $, cfg, cssColor, lang, loading, state, T } from './context.js';
-import { fmtAgo, fmtDuration, fmtHours, fmtKm, fmtNum, fmtTime } from './format.js';
+import { $, cssColor, lang, loading, state, T } from './context.js';
+import {
+  fmtAgo,
+  fmtDuration,
+  fmtHours,
+  fmtKm,
+  fmtNum,
+  fmtTime,
+} from './format.js';
 import { localized } from './i18n.js';
 import { map, mapPill } from './map.js';
-import { currentSpeed, movingStats, pointAt, recentSpeed, recordPace } from './progress.js';
-import { cpCount } from './summary.js';
+import {
+  currentSpeed,
+  movingStats,
+  pointAt,
+  recentSpeed,
+  recordPace,
+} from './progress.js';
+import { shareText } from './summary.js';
 
 // Where the previous record would be now, at its average pace.
 let recordMarker = null;
 
 export function renderDetail(r, s) {
-  const { v, now, last, done, finished, ended, ref, avgKmh, remaining, age, stale } = s;
+  const {
+    v,
+    now,
+    last,
+    done,
+    finished,
+    ended,
+    ref,
+    avgKmh,
+    remaining,
+    age,
+    stale,
+  } = s;
 
   const pct = s.share * 100;
-  $('pct').textContent = !state.cp ? `${fmtNum(pct, 1)} %` : state.cp.required ? cpCount(s) : '';
+  $('pct').textContent = shareText(s);
   $('bar-fill').style.width = `${pct}%`;
   $('bar-fill').style.background = r.color;
   $('bar').setAttribute('aria-valuenow', pct.toFixed(1));
   $('dist').textContent = fmtKm(done);
-  // Without a route the distance left is a straight-line lower bound.
-  $('remain').textContent = remaining == null ? '–' : state.cp && !finished ? `≈ ${fmtKm(remaining)}` : fmtKm(remaining);
+  $('remain').textContent = remainText(remaining, finished);
   $('remain-note').textContent = state.cp && !finished ? T.straightLine : '';
-  $('avg').textContent = avgKmh != null && done > 1000 ? fmtNum(avgKmh, 1) : '–';
+  $('avg').textContent =
+    avgKmh != null && done > 1000 ? fmtNum(avgKmh, 1) : '–';
 
   // An ended event without positions (or none loaded yet) has no ride to time.
-  const elapsedEnd = finished && ref ? ref.t : ended ? last?.t ?? null : now;
-  $('elapsed').textContent = elapsedEnd != null && now > r.rideStart ? fmtDuration(elapsedEnd - r.rideStart) : '–';
+  const elapsedEnd = elapsedUntil({ finished, ref, ended, last, now });
+  $('elapsed').textContent =
+    elapsedEnd != null && now > r.rideStart
+      ? fmtDuration(elapsedEnd - r.rideStart)
+      : '–';
 
   $('eta-row').hidden = !!state.cp;
   $('cp-row').hidden = !state.cp?.required;
@@ -42,15 +70,25 @@ export function renderDetail(r, s) {
     $('eta').textContent = '–';
   }
 
-  $('updated').textContent = !v.live
-    ? T.showingAt(fmtTime(now))
-    : last ? T.lastPosition(fmtAgo(age)) : loading() ? '' : T.noPositions;
+  $('updated').textContent = updatedText(v, now, last, age);
 
   renderMotion(r, { v, now, last, stale, finished: s.over });
   renderBattery(v);
   // The record compares along a route, so not in checkpoint events.
-  if (elapsedEnd == null || state.cp) renderRecord(null);
-  else renderRecord(r, { now, ghostAt: elapsedEnd, ref, done, remaining, avgKmh, finished, ended });
+  if (elapsedEnd == null || state.cp) {
+    renderRecord(null);
+  } else {
+    renderRecord(r, {
+      now,
+      ghostAt: elapsedEnd,
+      ref,
+      done,
+      remaining,
+      avgKmh,
+      finished,
+      ended,
+    });
+  }
 }
 
 // Each checkpoint after the start: when reached, the time from the previous
@@ -60,7 +98,9 @@ function renderCheckpointTable(r, s) {
     const i = k + 1;
     const t = s.arrivals[i];
     const tr = document.createElement('tr');
-    if (t == null) tr.className = 'ahead';
+    if (t == null) {
+      tr.className = 'ahead';
+    }
     const cells = [
       c.name,
       t != null ? fmtTime(t) : '–',
@@ -69,7 +109,9 @@ function renderCheckpointTable(r, s) {
     ];
     for (const [j, text] of cells.entries()) {
       const td = document.createElement(j ? 'td' : 'th');
-      if (!j) td.scope = 'row';
+      if (!j) {
+        td.scope = 'row';
+      }
       td.textContent = text;
       tr.append(td);
     }
@@ -80,6 +122,37 @@ function renderCheckpointTable(r, s) {
 
 // Speed at the last position, recent along-route speed or how long the rider
 // has been stopped, and total moving / stopped time.
+
+// Without a route the distance left is a straight-line lower bound.
+function remainText(remaining, finished) {
+  if (remaining == null) {
+    return '–';
+  }
+  return state.cp && !finished ? `≈ ${fmtKm(remaining)}` : fmtKm(remaining);
+}
+
+// When the ride's clock stops: at the finish, at the last position once the
+// event has ended (null without one), or now.
+function elapsedUntil({ finished, ref, ended, last, now }) {
+  if (finished && ref) {
+    return ref.t;
+  }
+  if (ended) {
+    return last?.t ?? null;
+  }
+  return now;
+}
+
+function updatedText(v, now, last, age) {
+  if (!v.live) {
+    return T.showingAt(fmtTime(now));
+  }
+  if (last) {
+    return T.lastPosition(fmtAgo(age));
+  }
+  return loading() ? '' : T.noPositions;
+}
+
 function renderMotion(r, { v, now, last, stale, finished }) {
   const [startLat, startLon] = state.cp
     ? [state.cp.checkpoints[0].lat, state.cp.checkpoints[0].lon]
@@ -88,8 +161,10 @@ function renderMotion(r, { v, now, last, stale, finished }) {
     start: { t: r.rideStart, lat: startLat, lon: startLon },
     now: finished ? null : now,
   });
-  $('moving').textContent = v.positions.length > 1 ? fmtHours(motion.movingMs) : '–';
-  $('stopped').textContent = v.positions.length > 1 ? fmtHours(motion.stoppedMs) : '–';
+  $('moving').textContent =
+    v.positions.length > 1 ? fmtHours(motion.movingMs) : '–';
+  $('stopped').textContent =
+    v.positions.length > 1 ? fmtHours(motion.stoppedMs) : '–';
 
   // Without a recent position there's no current speed to show.
   if (!last || stale || finished) {
@@ -98,12 +173,17 @@ function renderMotion(r, { v, now, last, stale, finished }) {
     return;
   }
   const speed = currentSpeed(v.positions);
-  $('speed').textContent = speed ? `${speed.estimated ? '≈ ' : ''}${fmtNum(speed.kmh, 0)}` : '–';
+  $('speed').textContent = speed
+    ? `${speed.estimated ? '≈ ' : ''}${fmtNum(speed.kmh, 0)}`
+    : '–';
   if (motion.stoppedSince != null) {
-    $('speed-note').textContent = T.stoppedFor(fmtDuration(now - motion.stoppedSince));
+    $('speed-note').textContent = T.stoppedFor(
+      fmtDuration(now - motion.stoppedSince),
+    );
   } else {
     const recent = recentSpeed(v.positions);
-    $('speed-note').textContent = recent != null ? T.recentAvg(fmtNum(recent, 1)) : '';
+    $('speed-note').textContent =
+      recent != null ? T.recentAvg(fmtNum(recent, 1)) : '';
   }
 }
 
@@ -117,7 +197,10 @@ function renderBattery(v) {
 }
 
 // The shown participant against the previous record; null r hides it.
-export function renderRecord(r, { now, ghostAt, ref, done, remaining, avgKmh, finished, ended } = {}) {
+export function renderRecord(
+  r,
+  { now, ghostAt, ref, done, remaining, avgKmh, finished, ended } = {},
+) {
   const rec = state.record;
   const row = $('record-row');
   row.hidden = !rec || !r || now < r.rideStart;
@@ -143,7 +226,12 @@ export function renderRecord(r, { now, ghostAt, ref, done, remaining, avgKmh, fi
       fillOpacity: 1,
       dashArray: '3 3',
     })
-      .bindTooltip(mapPill(T.recordPace), { permanent: true, direction: 'right', offset: [8, 0], className: 'record-tip' })
+      .bindTooltip(mapPill(T.recordPace), {
+        permanent: true,
+        direction: 'right',
+        offset: [8, 0],
+        className: 'record-tip',
+      })
       .addTo(map);
   } else {
     recordMarker.setLatLng(ghost);
@@ -169,7 +257,9 @@ export function renderRecord(r, { now, ghostAt, ref, done, remaining, avgKmh, fi
     el.textContent = (ahead ? T.ahead : T.behind)(fmtHours(Math.abs(aheadMs)));
     proj.textContent =
       avgKmh && done > 5000 && !ended
-        ? T.projectedTime(fmtHours(riderMs + (remaining / 1000 / avgKmh) * 3.6e6))
+        ? T.projectedTime(
+            fmtHours(riderMs + (remaining / 1000 / avgKmh) * 3.6e6),
+          )
         : '';
   }
 }

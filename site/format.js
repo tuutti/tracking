@@ -14,7 +14,10 @@ const timeFmt = new Intl.DateTimeFormat(LOCALE, {
 export const fmtTime = (ms) => timeFmt.format(ms);
 // Locale number format, e.g. fi "1 429,5", en "1,429.5".
 export const fmtNum = (n, dp) =>
-  n.toLocaleString(LOCALE, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+  n.toLocaleString(LOCALE, {
+    minimumFractionDigits: dp,
+    maximumFractionDigits: dp,
+  });
 export const fmtKm = (m, dp) => fmtNum(m / 1000, dp ?? (m < 100000 ? 1 : 0));
 
 export function fmtDuration(ms) {
@@ -22,8 +25,12 @@ export function fmtDuration(ms) {
   const d = Math.floor(min / 1440);
   const h = Math.floor((min % 1440) / 60);
   const m = min % 60;
-  if (d) return `${d} ${T.days} ${h} h`;
-  if (h) return `${h} h ${m} min`;
+  if (d) {
+    return `${d} ${T.days} ${h} h`;
+  }
+  if (h) {
+    return `${h} h ${m} min`;
+  }
   return `${m} min`;
 }
 
@@ -35,6 +42,8 @@ export function fmtHours(ms) {
 }
 
 export function fmtAgo(ms) {
-  if (ms < 60000) return T.justNow;
+  if (ms < 60000) {
+    return T.justNow;
+  }
   return T.ago(fmtDuration(ms));
 }

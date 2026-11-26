@@ -87,14 +87,17 @@ const STRINGS = {
     finalTime: (d) => `Loppuaika ${d}`,
     projectedTime: (d) => `Arvioitu loppuaika ${d}`,
 
-    serverDown: (ago) => `Seurantapalvelimeen ei saada yhteyttä. Näytetään ${ago} haetut tiedot, yritetään uudelleen.`,
-    serverDownNoData: 'Seurantapalvelimeen ei saada yhteyttä. Yritetään uudelleen...',
+    serverDown: (ago) =>
+      `Seurantapalvelimeen ei saada yhteyttä. Näytetään ${ago} haetut tiedot, yritetään uudelleen.`,
+    serverDownNoData:
+      'Seurantapalvelimeen ei saada yhteyttä. Yritetään uudelleen...',
     startsAt: (time, d) => `Lähtö ${time} (${d} päästä).`,
     waitingFirst: 'Odotetaan ensimmäistä sijaintia.',
     noSignal: (d) =>
       `Viimeisin sijainti saatiin ${d} sitten. Puhelin on luultavasti katvealueella. ` +
       'Se tallentaa sijainnit, ja puuttuvat sijainnit tulevat näkyviin, kun yhteys palaa.',
-    offRoute: (km) => `Poikettu suunnitellulta reitiltä (${km} km). Matkan laskenta jatkuu, kun palataan reitille.`,
+    offRoute: (km) =>
+      `Poikettu suunnitellulta reitiltä (${km} km). Matkan laskenta jatkuu, kun palataan reitille.`,
     routeError: (msg) => `Suunniteltua reittiä ei voitu ladata (${msg}).`,
     noEvent: 'Osoitteesta puuttuu tapahtuma.',
   },
@@ -184,14 +187,16 @@ const STRINGS = {
     finalTime: (d) => `Finished in ${d}`,
     projectedTime: (d) => `Projected finish time ${d}`,
 
-    serverDown: (ago) => `Can't reach the tracking server. Showing data from ${ago}, retrying.`,
+    serverDown: (ago) =>
+      `Can't reach the tracking server. Showing data from ${ago}, retrying.`,
     serverDownNoData: "Can't reach the tracking server. Retrying...",
     startsAt: (time, d) => `The ride starts ${time} (in ${d}).`,
     waitingFirst: 'Waiting for the first position.',
     noSignal: (d) =>
       `No position for ${d}. The phone is probably out of mobile coverage. ` +
       'It keeps recording and the missing positions will appear once it reconnects.',
-    offRoute: (km) => `Currently ${km} km off the planned route. Distance resumes once back on route.`,
+    offRoute: (km) =>
+      `Currently ${km} km off the planned route. Distance resumes once back on route.`,
     routeError: (msg) => `Couldn't load the planned route (${msg}).`,
     noEvent: 'No event given in the address.',
   },
@@ -201,8 +206,12 @@ export const LANGUAGES = Object.keys(STRINGS);
 
 // ?lang= in the URL wins, then the viewer's earlier choice, then config.js.
 export function pickLanguage(configured, urlParam, remembered = null) {
-  if (LANGUAGES.includes(urlParam)) return urlParam;
-  if (LANGUAGES.includes(remembered)) return remembered;
+  if (LANGUAGES.includes(urlParam)) {
+    return urlParam;
+  }
+  if (LANGUAGES.includes(remembered)) {
+    return remembered;
+  }
   return LANGUAGES.includes(configured) ? configured : 'en';
 }
 
@@ -211,16 +220,28 @@ export const strings = (lang) => STRINGS[lang];
 // A config text is either a plain string or { en: '...', fi: '...' }; a missing
 // language falls back to English, then to whichever is given.
 export function localized(value, lang) {
-  if (value && typeof value === 'object') return value[lang] ?? value.en ?? Object.values(value)[0] ?? '';
+  if (value && typeof value === 'object') {
+    return value[lang] ?? value.en ?? Object.values(value)[0] ?? '';
+  }
   return value ?? '';
 }
 
 // Fills static markup: data-i18n sets text, data-i18n-aria sets aria-label.
 export function translatePage(T, lang) {
   document.documentElement.lang = lang;
-  document.querySelector('meta[name="description"]')?.setAttribute('content', T.description);
-  for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = T[el.dataset.i18n];
-  for (const el of document.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', T[el.dataset.i18nAria]);
-  for (const el of document.querySelectorAll('[data-i18n-placeholder]')) el.placeholder = T[el.dataset.i18nPlaceholder];
-  for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = T[el.dataset.i18nTitle];
+  document
+    .querySelector('meta[name="description"]')
+    ?.setAttribute('content', T.description);
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    el.textContent = T[el.dataset.i18n];
+  }
+  for (const el of document.querySelectorAll('[data-i18n-aria]')) {
+    el.setAttribute('aria-label', T[el.dataset.i18nAria]);
+  }
+  for (const el of document.querySelectorAll('[data-i18n-placeholder]')) {
+    el.placeholder = T[el.dataset.i18nPlaceholder];
+  }
+  for (const el of document.querySelectorAll('[data-i18n-title]')) {
+    el.title = T[el.dataset.i18nTitle];
+  }
 }

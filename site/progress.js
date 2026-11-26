@@ -6,7 +6,9 @@ const rad = (d) => (d * Math.PI) / 180;
 export function haversine(a, b) {
   const dLat = rad(b[0] - a[0]);
   const dLon = rad(b[1] - a[1]);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLon / 2) ** 2;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
@@ -14,9 +16,14 @@ export function haversine(a, b) {
 export function parseGpx(text) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   let nodes = [...doc.getElementsByTagName('trkpt')];
-  if (!nodes.length) nodes = [...doc.getElementsByTagName('rtept')];
+  if (!nodes.length) {
+    nodes = [...doc.getElementsByTagName('rtept')];
+  }
   return nodes
-    .map((n) => [parseFloat(n.getAttribute('lat')), parseFloat(n.getAttribute('lon'))])
+    .map((n) => [
+      parseFloat(n.getAttribute('lat')),
+      parseFloat(n.getAttribute('lon')),
+    ])
     .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon));
 }
 
@@ -28,7 +35,9 @@ export function buildRoute(latlngs) {
   for (const p of latlngs) {
     if (pts.length) {
       const step = haversine(pts[pts.length - 1], p);
-      if (step < 0.5) continue;
+      if (step < 0.5) {
+        continue;
+      }
       total += step;
     }
     pts.push(p);
@@ -42,9 +51,12 @@ function indexAt(cum, d) {
   let lo = 0;
   let hi = cum.length - 1;
   while (lo < hi) {
-    const mid = (lo + hi + 1) >> 1;
-    if (cum[mid] <= d) lo = mid;
-    else hi = mid - 1;
+    const mid = Math.ceil((lo + hi) / 2);
+    if (cum[mid] <= d) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
   }
   return lo;
 }
@@ -52,11 +64,18 @@ function indexAt(cum, d) {
 // Point on the route at distance d (m) along it.
 export function pointAt(route, d) {
   const { pts, cum } = route;
-  if (d <= 0) return pts[0];
-  if (d >= route.length) return pts[pts.length - 1];
+  if (d <= 0) {
+    return pts[0];
+  }
+  if (d >= route.length) {
+    return pts[pts.length - 1];
+  }
   const i = indexAt(cum, d);
   const t = (d - cum[i]) / (cum[i + 1] - cum[i]);
-  return [pts[i][0] + t * (pts[i + 1][0] - pts[i][0]), pts[i][1] + t * (pts[i + 1][1] - pts[i][1])];
+  return [
+    pts[i][0] + t * (pts[i + 1][0] - pts[i][0]),
+    pts[i][1] + t * (pts[i + 1][1] - pts[i][1]),
+  ];
 }
 
 // The previous record at a constant pace, by share of the route.
@@ -75,20 +94,28 @@ export function recordPace(length, recordMs) {
 //   counts only when that fix is within startRadiusM of it.
 // now: while stopped, the stop lasts until now.
 // -> { movingMs, stoppedMs, stoppedSince (ms timestamp, or null while moving) }
-export function movingStats(positions, { minKmh = 3, start = null, now = null, startRadiusM = 1000 } = {}) {
+export function movingStats(
+  positions,
+  { minKmh = 3, start = null, now = null, startRadiusM = 1000 } = {},
+) {
   let movingMs = 0;
   let stoppedMs = 0;
   let stoppedSince = null;
   const first = positions[0];
   const useStart =
-    start && first && start.t < first.t && haversine([start.lat, start.lon], [first.lat, first.lon]) <= startRadiusM;
+    start &&
+    first &&
+    start.t < first.t &&
+    haversine([start.lat, start.lon], [first.lat, first.lon]) <= startRadiusM;
   const pts = useStart ? [start, ...positions] : positions;
   for (let i = 1; i < pts.length; i++) {
     const a = pts[i - 1];
     const b = pts[i];
     const dt = b.t - a.t;
-    if (dt <= 0) continue;
-    const kmh = (haversine([a.lat, a.lon], [b.lat, b.lon]) / 1000) / (dt / 3.6e6);
+    if (dt <= 0) {
+      continue;
+    }
+    const kmh = haversine([a.lat, a.lon], [b.lat, b.lon]) / 1000 / (dt / 3.6e6);
     if (kmh >= minKmh) {
       movingMs += dt;
       stoppedSince = null;
@@ -98,20 +125,30 @@ export function movingStats(positions, { minKmh = 3, start = null, now = null, s
     }
   }
   const lastT = pts.at(-1)?.t;
-  if (stoppedSince != null && now != null && now > lastT) stoppedMs += now - lastT;
+  if (stoppedSince != null && now != null && now > lastT) {
+    stoppedMs += now - lastT;
+  }
   return { movingMs, stoppedMs, stoppedSince };
 }
 
 // Along-route speed (km/h) over roughly the last windowMs before the latest
 // on-route position, or null with less than minMs of data in the window.
 // positions: [{ t, along (m) | null }] sorted by t.
-export function recentSpeed(positions, windowMs = 30 * 60 * 1000, minMs = 10 * 60 * 1000) {
+export function recentSpeed(
+  positions,
+  windowMs = 30 * 60 * 1000,
+  minMs = 10 * 60 * 1000,
+) {
   const onRoute = positions.filter((p) => p.along != null);
   const last = onRoute.at(-1);
-  if (!last) return null;
+  if (!last) {
+    return null;
+  }
   const first = onRoute.find((p) => p.t >= last.t - windowMs);
   const dt = last.t - first.t;
-  if (dt < minMs) return null;
+  if (dt < minMs) {
+    return null;
+  }
   return Math.max(0, (last.along - first.along) / 1000) / (dt / 3.6e6);
 }
 
@@ -119,10 +156,17 @@ export function recentSpeed(positions, windowMs = 30 * 60 * 1000, minMs = 10 * 6
 // so for those the recent along-route speed is used, marked as estimated.
 // positions: [{ t, spd, acc, along }] sorted by t.
 // -> { kmh, estimated } or null when there's nothing to go on.
-export function currentSpeed(positions, { gpsAccuracyM = 30, windowMs = 5 * 60 * 1000, minMs = 2 * 60 * 1000 } = {}) {
+export function currentSpeed(
+  positions,
+  { gpsAccuracyM = 30, windowMs = 5 * 60 * 1000, minMs = 2 * 60 * 1000 } = {},
+) {
   const last = positions.at(-1);
-  if (!last) return null;
-  if (last.acc <= gpsAccuracyM) return { kmh: last.spd, estimated: false };
+  if (!last) {
+    return null;
+  }
+  if (last.acc <= gpsAccuracyM) {
+    return { kmh: last.spd, estimated: false };
+  }
   const kmh = recentSpeed(positions, windowMs, minMs);
   return kmh == null ? null : { kmh, estimated: true };
 }
@@ -136,12 +180,17 @@ export function interpolate(route, a, b, t) {
     const d = a.progress + f * (b.progress - a.progress);
     return { latlng: pointAt(route, d), progress: d };
   }
-  return { latlng: [a.lat + f * (b.lat - a.lat), a.lon + f * (b.lon - a.lon)], progress: a.progress };
+  return {
+    latlng: [a.lat + f * (b.lat - a.lat), a.lon + f * (b.lon - a.lon)],
+    progress: a.progress,
+  };
 }
 
 // Route vertices from the start up to distance d, ending exactly at d.
 export function sliceTo(route, d) {
-  if (d <= 0) return [];
+  if (d <= 0) {
+    return [];
+  }
   const i = indexAt(route.cum, Math.min(d, route.length));
   return [...route.pts.slice(0, i + 1), pointAt(route, d)];
 }
@@ -166,7 +215,9 @@ function projectOnSegment(route, i, p) {
 function candidates(route, p, lo, hi) {
   const out = [];
   const last = Math.min(route.pts.length - 2, indexAt(route.cum, hi));
-  for (let i = indexAt(route.cum, lo); i <= last; i++) out.push(projectOnSegment(route, i, p));
+  for (let i = indexAt(route.cum, lo); i <= last; i++) {
+    out.push(projectOnSegment(route, i, p));
+  }
   return out;
 }
 
@@ -195,17 +246,25 @@ export function createProgressTracker(route, opts) {
       const hi = progress + o.slackM + (dt * o.maxSpeedKmh) / 3.6;
       const lo = Math.max(0, progress - o.backtrackM);
       const cands = candidates(route, [pos.lat, pos.lon], lo, hi);
-      if (!cands.length) return { along: null, offRoute: true, offBy: Infinity };
+      if (!cands.length) {
+        return { along: null, offRoute: true, offBy: Infinity };
+      }
 
       const best = cands.reduce((m, c) => (c.dist < m.dist ? c : m));
       const tolerance = o.offRouteM + Math.min(pos.acc || 0, 500);
-      if (best.dist > tolerance) return { along: null, offRoute: true, offBy: best.dist };
+      if (best.dist > tolerance) {
+        return { along: null, offRoute: true, offBy: best.dist };
+      }
 
       // Prefer segments ahead of current progress, the nearest first, with a
       // penalty of 2 m per km for being further ahead.
       const score = (c) => c.dist + 0.002 * Math.max(0, c.along - progress);
-      const ahead = cands.filter((c) => c.dist <= tolerance && c.along >= progress - 200);
-      const pick = ahead.length ? ahead.reduce((m, c) => (score(c) < score(m) ? c : m)) : best;
+      const ahead = cands.filter(
+        (c) => c.dist <= tolerance && c.along >= progress - 200,
+      );
+      const pick = ahead.length
+        ? ahead.reduce((m, c) => (score(c) < score(m) ? c : m))
+        : best;
 
       progress = Math.max(progress, pick.along);
       lastOnRouteTime = pos.t;
@@ -222,7 +281,8 @@ export function createProgressTracker(route, opts) {
 // -> { checkpoints: [{ name, lat, lon, radiusM }], sections: [{ name, pts: [[lat, lon]] }] }
 export function parseCourse(text, { radiusM = 300 } = {}) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
-  const childText = (n, tag) => n.getElementsByTagName(tag)[0]?.textContent.trim() || '';
+  const childText = (n, tag) =>
+    n.getElementsByTagName(tag)[0]?.textContent.trim() || '';
   const checkpoints = [...doc.getElementsByTagName('wpt')]
     .map((n, i) => ({
       name: childText(n, 'name') || String(i),
@@ -235,7 +295,10 @@ export function parseCourse(text, { radiusM = 300 } = {}) {
     .map((n) => ({
       name: childText(n, 'name'),
       pts: [...n.getElementsByTagName('trkpt')]
-        .map((p) => [parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))])
+        .map((p) => [
+          parseFloat(p.getAttribute('lat')),
+          parseFloat(p.getAttribute('lon')),
+        ])
         .filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon)),
     }))
     .filter((s) => s.pts.length > 1);
@@ -247,7 +310,12 @@ export function parseCourse(text, { radiusM = 300 } = {}) {
 // accuracy. After `resetAfter` rejected jumps in a row the new place is taken
 // without adding the jump.
 // add({ t, lat, lon, acc }) -> distance so far (m)
-export function createOdometer({ maxAccM = 50, maxKmh = 80, minMoveM = 10, resetAfter = 3 } = {}) {
+export function createOdometer({
+  maxAccM = 50,
+  maxKmh = 80,
+  minMoveM = 10,
+  resetAfter = 3,
+} = {}) {
   let distance = 0;
   let anchor = null;
   let rejected = 0;
@@ -256,7 +324,9 @@ export function createOdometer({ maxAccM = 50, maxKmh = 80, minMoveM = 10, reset
       return distance;
     },
     add(pos) {
-      if (!(pos.acc <= maxAccM)) return distance;
+      if (!(pos.acc <= maxAccM)) {
+        return distance;
+      }
       if (!anchor) {
         anchor = pos;
         return distance;
@@ -269,7 +339,8 @@ export function createOdometer({ maxAccM = 50, maxKmh = 80, minMoveM = 10, reset
       }
       const dt = pos.t - anchor.t;
       if (dt <= 0 || d / 1000 / (dt / 3.6e6) > maxKmh) {
-        if (++rejected >= resetAfter) {
+        rejected += 1;
+        if (rejected >= resetAfter) {
           anchor = pos;
           rejected = 0;
         }
@@ -301,7 +372,12 @@ export function createCheckpointTracker(checkpoints, { startTime }) {
       // One fix can reach several checkpoints that lie close together.
       while (arrivals.length < checkpoints.length) {
         const cp = checkpoints[arrivals.length];
-        if (!(pos.acc <= cp.radiusM) || haversine([cp.lat, cp.lon], [pos.lat, pos.lon]) > cp.radiusM) break;
+        if (
+          !(pos.acc <= cp.radiusM) ||
+          haversine([cp.lat, cp.lon], [pos.lat, pos.lon]) > cp.radiusM
+        ) {
+          break;
+        }
         arrivals.push(pos.t);
       }
     },
@@ -310,10 +386,17 @@ export function createCheckpointTracker(checkpoints, { startTime }) {
 
 // Straight-line distance from here via checkpoint `next` and the rest to the finish.
 export function remainingVia(checkpoints, next, here) {
-  if (next >= checkpoints.length) return 0;
-  let d = here ? haversine(here, [checkpoints[next].lat, checkpoints[next].lon]) : 0;
+  if (next >= checkpoints.length) {
+    return 0;
+  }
+  let d = here
+    ? haversine(here, [checkpoints[next].lat, checkpoints[next].lon])
+    : 0;
   for (let i = next + 1; i < checkpoints.length; i++) {
-    d += haversine([checkpoints[i - 1].lat, checkpoints[i - 1].lon], [checkpoints[i].lat, checkpoints[i].lon]);
+    d += haversine(
+      [checkpoints[i - 1].lat, checkpoints[i - 1].lon],
+      [checkpoints[i].lat, checkpoints[i].lon],
+    );
   }
   return d;
 }

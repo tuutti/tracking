@@ -28,7 +28,8 @@ window.TRACKER_CONFIG = {
   // Map tiles. OSM's standard tiles are fine for modest traffic; for a big
   // audience use a provider with a key (MapTiler, Stadia, Thunderforest...).
   tileUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-  tileAttribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  tileAttribution:
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 
   // Show times in this zone (IANA name), or null for each viewer's local time.
   timeZone: null,

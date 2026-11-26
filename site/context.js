@@ -5,9 +5,14 @@ export const cfg = window.TRACKER_CONFIG;
 
 // Colours from config.js override the stylesheet's; the map reads them from there.
 const root = document.documentElement;
-if (cfg.brandColor) root.style.setProperty('--brand', cfg.brandColor);
-if (cfg.routeColor) root.style.setProperty('--route', cfg.routeColor);
-export const cssColor = (name) => getComputedStyle(root).getPropertyValue(name).trim();
+if (cfg.brandColor) {
+  root.style.setProperty('--brand', cfg.brandColor);
+}
+if (cfg.routeColor) {
+  root.style.setProperty('--route', cfg.routeColor);
+}
+export const cssColor = (name) =>
+  getComputedStyle(root).getPropertyValue(name).trim();
 export const params = new URLSearchParams(location.search);
 export const LANG_KEY = 'lang';
 let rememberedLang = null;
@@ -17,11 +22,17 @@ try {
   // Storage blocked: config.js or ?lang= decides.
 }
 // Without a language in config.js, the one the server wrote into <html lang> (PAGE_LANG).
-export const lang = pickLanguage(cfg.lang ?? document.documentElement.lang, params.get('lang'), rememberedLang);
+export const lang = pickLanguage(
+  cfg.lang ?? document.documentElement.lang,
+  params.get('lang'),
+  rememberedLang,
+);
 export const T = strings(lang);
 // The event to show: /event/<id> (tracker-backend), or ?event=<id> on a static host.
 export const EVENT_ID =
-  decodeURIComponent(location.pathname.match(/\/event\/([^/]+)\/?$/)?.[1] ?? '') || params.get('event');
+  decodeURIComponent(
+    location.pathname.match(/\/event\/([^/]+)\/?$/)?.[1] ?? '',
+  ) || params.get('event');
 export const EVENT_URL = `${cfg.apiUrl}/events/${encodeURIComponent(EVENT_ID)}`;
 export const FINISH_TOLERANCE_M = 300;
 
@@ -44,7 +55,9 @@ export const state = {
 
 // The participant whose details are shown: the chosen one, or the only one.
 export function selectedRider() {
-  if (state.riders.length === 1) return state.riders[0];
+  if (state.riders.length === 1) {
+    return state.riders[0];
+  }
   return state.riders.find((r) => r.id === state.selected) ?? null;
 }
 

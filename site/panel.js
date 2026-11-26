@@ -1,10 +1,25 @@
 // The side panel (a bottom sheet on phones): the list or one participant's
 // details, the status badge and the notice. render() redraws all of it.
-import { $, cfg, isEnded, loading, selectedRider, state, T } from './context.js';
+import {
+  $,
+  cfg,
+  isEnded,
+  loading,
+  selectedRider,
+  state,
+  T,
+} from './context.js';
 import { renderDetail, renderRecord } from './details.js';
 import { fmtAgo, fmtDuration, fmtKm, fmtTime } from './format.js';
 import { renderList } from './list.js';
-import { centerOnRider, drawTrack, map, renderCheckpoints, renderMarker, setFollow } from './map.js';
+import {
+  centerOnRider,
+  drawTrack,
+  map,
+  renderCheckpoints,
+  renderMarker,
+  setFollow,
+} from './map.js';
 import { renderRewind } from './rewind.js';
 import { summary } from './summary.js';
 
@@ -28,16 +43,21 @@ function setCollapsed(collapsed) {
 function renderToggleLabel() {
   const collapsed = panel.classList.contains('collapsed');
   const list = !selectedRider();
-  $('panel-toggle-label').textContent = collapsed
-    ? list ? T.showParticipants : T.showDetails
-    : list ? T.hideParticipants : T.hideDetails;
+  const [forList, forDetails] = collapsed
+    ? [T.showParticipants, T.showDetails]
+    : [T.hideParticipants, T.hideDetails];
+  $('panel-toggle-label').textContent = list ? forList : forDetails;
 }
 
-$('panel-toggle').addEventListener('click', () => setCollapsed(!panel.classList.contains('collapsed')));
+$('panel-toggle').addEventListener('click', () =>
+  setCollapsed(!panel.classList.contains('collapsed')),
+);
 
 // Back to everyone; on a phone with the panel collapsed, open it so the list shows.
 $('back').addEventListener('click', () => {
-  if (panel.classList.contains('collapsed')) setCollapsed(false);
+  if (panel.classList.contains('collapsed')) {
+    setCollapsed(false);
+  }
   select(null);
 });
 
@@ -55,10 +75,15 @@ export function initPanel() {
 export function select(id) {
   state.selected = id;
   const r = state.riders.find((q) => q.id === id);
-  if (r) r.visible = true;
+  if (r) {
+    r.visible = true;
+  }
   const url = new URL(location.href);
-  if (id) url.searchParams.set('participant', id);
-  else url.searchParams.delete('participant');
+  if (id) {
+    url.searchParams.set('participant', id);
+  } else {
+    url.searchParams.delete('participant');
+  }
   history.replaceState(null, '', url);
   setFollow(true);
   drawTrack();
@@ -71,9 +96,15 @@ export function render() {
   const sel = selectedRider();
   const now = state.rewindT ?? Date.now();
 
-  const anyActive = [...sums.values()].some((s) => s.last && !s.over && !s.stale);
-  for (const [r, s] of sums) renderMarker(r, s, sel, anyActive);
-  if (state.cp) renderCheckpoints(sel, sel && sums.get(sel));
+  const anyActive = [...sums.values()].some(
+    (s) => s.last && !s.over && !s.stale,
+  );
+  for (const [r, s] of sums) {
+    renderMarker(r, s, sel, anyActive);
+  }
+  if (state.cp) {
+    renderCheckpoints(sel, sel && sums.get(sel));
+  }
   renderStatus(sums, sel);
 
   const single = state.riders.length === 1;
@@ -106,45 +137,80 @@ function renderStatus(sums, sel) {
   const rewound = state.rewindT != null;
   const riding = all.some((s) => s.last && !s.stale && !s.over);
   live.classList.toggle('on', !rewound && riding && state.failures === 0);
-  if (rewound) live.textContent = T.statusRewound;
-  else if (all.length && all.every((s) => s.finished)) live.textContent = T.statusFinished;
-  else if (all.length && all.every((s) => s.over)) live.textContent = T.statusEnded;
-  else if (riding) live.textContent = T.statusLive;
-  else if (!all.some((s) => s.last)) live.textContent = T.statusWaiting;
-  else live.textContent = T.statusNoSignal;
+  live.textContent = statusText(all, rewound, riding);
+}
+
+function statusText(all, rewound, riding) {
+  if (rewound) {
+    return T.statusRewound;
+  }
+  if (all.length && all.every((s) => s.finished)) {
+    return T.statusFinished;
+  }
+  if (all.length && all.every((s) => s.over)) {
+    return T.statusEnded;
+  }
+  if (riding) {
+    return T.statusLive;
+  }
+  if (!all.some((s) => s.last)) {
+    return T.statusWaiting;
+  }
+  return T.statusNoSignal;
 }
 
 function renderNotice(sums, sel, now) {
-  const s = sel ? sums.get(sel) : null;
-  const anyPosition = [...sums.values()].some((q) => q.last);
-  let text = null;
-  let kind = 'warn';
-  if (loading()) {
-    text = null;
-  } else if (state.rewindT != null) {
-    // Rewound: only what was true at that moment, without live advice.
-    if (s?.last && !s.stale && s.last.offRoute && Number.isFinite(s.last.offBy)) text = T.offRoute(fmtKm(s.last.offBy, 1));
-  } else if (state.failures > 0 && now - state.lastFetchOk > cfg.pollSeconds * 2000) {
-    kind = 'err';
-    text = state.lastFetchOk
-      ? T.serverDown(fmtAgo(now - state.lastFetchOk))
-      : T.serverDownNoData;
-  } else if (now < (sel ? sel.rideStart : state.eventStart)) {
-    const start = sel ? sel.rideStart : state.eventStart;
-    text = T.startsAt(fmtTime(start), fmtDuration(start - now));
-  } else if (!s) {
-    if (state.riders.length && !anyPosition && !isEnded(now)) text = T.waitingFirst;
-  } else if (s.over) {
-    text = null;
-  } else if (!s.last) {
-    text = T.waitingFirst;
-  } else if (s.stale) {
-    text = T.noSignal(fmtDuration(s.age));
-  } else if (s.last.offRoute && Number.isFinite(s.last.offBy)) {
-    text = T.offRoute(fmtKm(s.last.offBy, 1));
-  }
+  const n = notice(sums, sel, now);
+  const { text, kind = 'warn' } =
+    typeof n === 'string' ? { text: n } : (n ?? {});
   const el = $('notice');
   el.hidden = !text;
   el.className = `notice ${kind}`;
-  if (text) el.textContent = text;
+  if (text) {
+    el.textContent = text;
+  }
+}
+
+// The notice above the stats: null, a warning's text, or { text, kind: 'err' }.
+function notice(sums, sel, now) {
+  if (loading()) {
+    return null;
+  }
+  const s = sel ? sums.get(sel) : null;
+  const offRoute =
+    s?.last && !s.stale && s.last.offRoute && Number.isFinite(s.last.offBy)
+      ? T.offRoute(fmtKm(s.last.offBy, 1))
+      : null;
+  // Rewound: only what was true at that moment, without live advice.
+  if (state.rewindT != null) {
+    return offRoute;
+  }
+  if (state.failures > 0 && now - state.lastFetchOk > cfg.pollSeconds * 2000) {
+    return {
+      kind: 'err',
+      text: state.lastFetchOk
+        ? T.serverDown(fmtAgo(now - state.lastFetchOk))
+        : T.serverDownNoData,
+    };
+  }
+  const start = sel ? sel.rideStart : state.eventStart;
+  if (now < start) {
+    return T.startsAt(fmtTime(start), fmtDuration(start - now));
+  }
+  if (!s) {
+    const anyPosition = [...sums.values()].some((q) => q.last);
+    return state.riders.length && !anyPosition && !isEnded(now)
+      ? T.waitingFirst
+      : null;
+  }
+  if (s.over) {
+    return null;
+  }
+  if (!s.last) {
+    return T.waitingFirst;
+  }
+  if (s.stale) {
+    return T.noSignal(fmtDuration(s.age));
+  }
+  return offRoute;
 }

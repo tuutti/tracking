@@ -31,7 +31,9 @@ const page = opt.page.replace(/\/$/, '');
 // The page's API, on its own origin.
 async function eventIds() {
   const res = await fetch(`${page}/events`).catch(() => null);
-  if (res?.ok) return (await res.json()).map((e) => e.id);
+  if (res?.ok) {
+    return (await res.json()).map((e) => e.id);
+  }
   throw new Error(`No event ids given, and ${page}/events could not be read`);
 }
 
@@ -65,20 +67,37 @@ const COVERAGE = `(() => {
 // Minimal Chrome DevTools Protocol client.
 async function launch() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'preview-image-'));
-  const proc = spawn(opt.chromium, [
-    '--headless=new', '--no-sandbox', '--hide-scrollbars', `--user-data-dir=${dir}`,
-    '--remote-debugging-port=0', `--window-size=${WIDTH},${HEIGHT}`, 'about:blank',
-  ], { stdio: 'ignore' });
+  const proc = spawn(
+    opt.chromium,
+    [
+      '--headless=new',
+      '--no-sandbox',
+      '--hide-scrollbars',
+      `--user-data-dir=${dir}`,
+      '--remote-debugging-port=0',
+      `--window-size=${WIDTH},${HEIGHT}`,
+      'about:blank',
+    ],
+    { stdio: 'ignore' },
+  );
   proc.on('error', (err) => {
-    console.error(`Can't start ${opt.chromium} (${err.message}); give its path with --chromium`);
+    console.error(
+      `Can't start ${opt.chromium} (${err.message}); give its path with --chromium`,
+    );
     process.exit(1);
   });
   const portFile = path.join(dir, 'DevToolsActivePort');
-  for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) await sleep(100);
+  for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) {
+    await sleep(100);
+  }
   const port = fs.readFileSync(portFile, 'utf8').split('\n')[0];
   const tabs = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-  const ws = new WebSocket(tabs.find((t) => t.type === 'page').webSocketDebuggerUrl);
-  await new Promise((resolve) => (ws.onopen = resolve));
+  const ws = new WebSocket(
+    tabs.find((t) => t.type === 'page').webSocketDebuggerUrl,
+  );
+  await new Promise((resolve) => {
+    ws.onopen = resolve;
+  });
   let seq = 0;
   const pending = new Map();
   ws.onmessage = (e) => {
@@ -90,27 +109,50 @@ async function launch() {
   };
   const call = (method, params = {}) =>
     new Promise((resolve, reject) => {
-      pending.set(++seq, (m) => (m.error ? reject(new Error(`${method}: ${m.error.message}`)) : resolve(m.result)));
+      seq += 1;
+      pending.set(seq, (m) => {
+        if (m.error) {
+          reject(new Error(`${method}: ${m.error.message}`));
+        } else {
+          resolve(m.result);
+        }
+      });
       ws.send(JSON.stringify({ id: seq, method, params }));
     });
   // Chromium (and its helpers) write to the profile until they have exited.
   const close = async () => {
     ws.close();
-    const exited = new Promise((resolve) => proc.once('exit', resolve));
+    const exited = new Promise((resolve) => {
+      proc.once('exit', resolve);
+    });
     proc.kill();
     await exited;
-    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    fs.rmSync(dir, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 200,
+    });
   };
   return { call, close };
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
 
 // Waits until the expression is true in the page (or gives up after `ms`).
 async function until(call, expression, ms) {
   for (const end = Date.now() + ms; Date.now() < end; await sleep(250)) {
-    const r = await call('Runtime.evaluate', { expression, returnByValue: true });
-    if (r.result.value) return true;
+    const r = await call('Runtime.evaluate', {
+      expression,
+      returnByValue: true,
+    });
+    if (r.result.value) {
+      return true;
+    }
   }
   return false;
 }
@@ -127,19 +169,27 @@ const PREPARE = `document.addEventListener('readystatechange', () => {
   window.L?.Map.mergeOptions({ zoomAnimation: false, fadeAnimation: false });
 });`;
 
-const evaluate = async (call, expression) => (await call('Runtime.evaluate', { expression, returnByValue: true })).result.value;
+const evaluate = async (call, expression) =>
+  (await call('Runtime.evaluate', { expression, returnByValue: true })).result
+    .value;
 
 // A page `1 / scale` times the image's size; the screenshot scales it down
 // (deviceScaleFactor leaves gaps between the tiles).
 const setScale = (call, scale) =>
   call('Emulation.setDeviceMetricsOverride', {
-    width: Math.round(WIDTH / scale), height: Math.round(HEIGHT / scale), deviceScaleFactor: 1, mobile: false,
+    width: Math.round(WIDTH / scale),
+    height: Math.round(HEIGHT / scale),
+    deviceScaleFactor: 1,
+    mobile: false,
   });
 
 // The page at a scale, with the whole route fitted; returns COVERAGE.
 async function fitAt(call, scale) {
   await setScale(call, scale);
-  await evaluate(call, `document.documentElement.style.setProperty('--scale', ${scale})`);
+  await evaluate(
+    call,
+    `document.documentElement.style.setProperty('--scale', ${scale})`,
+  );
   // Once Leaflet has noticed the new size.
   await sleep(400);
   await evaluate(call, `document.getElementById('btn-route').click()`);
@@ -149,11 +199,24 @@ async function fitAt(call, scale) {
 
 // Opens the event's page and waits until it has loaded.
 async function open(call, id) {
-  await call('Page.navigate', { url: `${page}/?event=${encodeURIComponent(id)}${opt.lang ? `&lang=${encodeURIComponent(opt.lang)}` : ''}` });
-  const loaded = await until(call, `!document.querySelector('#live')?.textContent.includes('...') && document.querySelector('.leaflet-overlay-pane path')`, 20000);
-  if (!loaded) throw new Error('the page did not finish loading');
-  const failed = await evaluate(call, `document.querySelector('.notice.err')?.textContent ?? ''`);
-  if (failed) throw new Error(failed);
+  await call('Page.navigate', {
+    url: `${page}/?event=${encodeURIComponent(id)}${opt.lang ? `&lang=${encodeURIComponent(opt.lang)}` : ''}`,
+  });
+  const loaded = await until(
+    call,
+    `!document.querySelector('#live')?.textContent.includes('...') && document.querySelector('.leaflet-overlay-pane path')`,
+    20000,
+  );
+  if (!loaded) {
+    throw new Error('the page did not finish loading');
+  }
+  const failed = await evaluate(
+    call,
+    `document.querySelector('.notice.err')?.textContent ?? ''`,
+  );
+  if (failed) {
+    throw new Error(failed);
+  }
 }
 
 async function shoot(call, id) {
@@ -162,12 +225,17 @@ async function shoot(call, id) {
   let best = { scale: 1, coverage: -1 };
   for (const scale of SCALES) {
     const coverage = await fitAt(call, scale);
-    if (coverage > best.coverage + 0.02) best = { scale, coverage };
+    if (coverage > best.coverage + 0.02) {
+      best = { scale, coverage };
+    }
   }
   // Afresh at the chosen scale, without the tries' leftover tiles.
   await setScale(call, best.scale);
   await open(call, id);
-  await evaluate(call, `document.documentElement.style.setProperty('--scale', ${best.scale})`);
+  await evaluate(
+    call,
+    `document.documentElement.style.setProperty('--scale', ${best.scale})`,
+  );
   await evaluate(call, `document.getElementById('btn-route').click()`);
   await sleep(600);
   await until(call, TILES_DONE, 15000);
@@ -175,9 +243,17 @@ async function shoot(call, id) {
   const shot = await call('Page.captureScreenshot', {
     format: 'jpeg',
     quality: 82,
-    clip: { x: 0, y: 0, width: Math.round(WIDTH / best.scale), height: Math.round(HEIGHT / best.scale), scale: best.scale },
+    clip: {
+      x: 0,
+      y: 0,
+      width: Math.round(WIDTH / best.scale),
+      height: Math.round(HEIGHT / best.scale),
+      scale: best.scale,
+    },
   });
-  const file = opt.events ? path.join(opt.events, id, 'preview.jpg') : path.join(opt.out, `${id}.jpg`);
+  const file = opt.events
+    ? path.join(opt.events, id, 'preview.jpg')
+    : path.join(opt.out, `${id}.jpg`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
   return { file, scale: best.scale };
@@ -187,16 +263,25 @@ const events = ids.length ? ids : await eventIds();
 const { call, close } = await launch();
 let failures = 0;
 try {
-  await call('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
-  await call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
+  await call('Emulation.setDeviceMetricsOverride', {
+    width: WIDTH,
+    height: HEIGHT,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
+  await call('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-color-scheme', value: 'light' }],
+  });
   await call('Page.enable');
   await call('Page.addScriptToEvaluateOnNewDocument', { source: PREPARE });
   for (const id of events) {
     try {
       const { file, scale } = await shoot(call, id);
-      console.log(`${id}: ${path.relative(process.cwd(), file)} (${Math.round(fs.statSync(file).size / 1024)} kB, scale ${scale})`);
+      console.log(
+        `${id}: ${path.relative(process.cwd(), file)} (${Math.round(fs.statSync(file).size / 1024)} kB, scale ${scale})`,
+      );
     } catch (err) {
-      failures++;
+      failures += 1;
       console.error(`${id}: ${err.message}`);
     }
   }

@@ -1,0 +1,22 @@
+{
+  "name": "tracking",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">= 20.0"
+  },
+  "scripts": {
+    "lint": "eslint --ext .js,.mjs .",
+    "format": "prettier --write \"site/**/*.{js,css}\" \"test/**/*.mjs\" \"tools/**/*.mjs\"",
+    "test": "node --test test/"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsdoc": "^61.7.1",
+    "eslint-plugin-prettier": "^5.5.7",
+    "prettier": "^3.10.1"
+  }
+}
