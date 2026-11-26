@@ -49,7 +49,7 @@ export const state = {
   selected: params.get('participant'), // participant id shown in detail, or null for the list
   lastFetchOk: 0,
   failures: 0,
-  follow: true,
+  follow: false, // keeping the shown participant in view
   rewindT: null, // ms: the moment shown with the rewind slider, or null for live
 };
 

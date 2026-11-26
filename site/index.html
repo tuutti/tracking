@@ -22,36 +22,38 @@
       <h1 id="title" data-i18n="heading">Live tracker</h1>
       <p id="subtitle" hidden></p>
     </div>
-    <div class="top-right">
-      <span id="live" class="live" aria-live="polite" data-i18n="loading">Loading...</span>
-      <details id="theme-menu" class="menu">
-        <summary aria-label="Theme" data-i18n-aria="theme">
-          <span class="palette" aria-hidden="true"></span><span id="theme-current" class="menu-current"></span>
-          <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.7 9l5.74 5.74a2 2 0 0 0 2.82 0L19 9"/></svg>
-        </summary>
-        <ul>
-          <li><button type="button" data-theme-choice="light" data-i18n="themeLight">Light</button></li>
-          <li><button type="button" data-theme-choice="dark" data-i18n="themeDark">Dark</button></li>
-          <li><button type="button" data-theme-choice="system" data-i18n="themeSystem">Default</button></li>
-        </ul>
-      </details>
-      <details id="lang-menu" class="menu">
-        <summary aria-label="Language" data-i18n-aria="language">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 23l5-11 5 11M21.9 20.6h-7.8"/><path d="M1 5.7h6.5m0 0h2.6m-2.6 0c0 3.2-1.2 6.1-2.9 7.7m0 0C3.6 14.4 2.3 15 1 15m3.6-1.6C3.2 12.6 2.7 11.9 2.3 10.3m2.3 3.1c1.6 0.9 3.8 1.5 6.4 1.6M3.6 1l1.3 1.2"/></svg>
-          <span id="lang-current" class="menu-current"></span>
-          <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.7 9l5.74 5.74a2 2 0 0 0 2.82 0L19 9"/></svg>
-        </summary>
-        <ul id="lang-list"></ul>
-      </details>
-    </div>
   </header>
 
   <main class="layout">
     <div class="map-wrap">
       <div id="map" class="map" role="region" aria-label="Map" data-i18n-aria="map"></div>
       <div class="map-buttons">
-        <button id="btn-rider" type="button" data-i18n="followRider">Follow rider</button>
-        <button id="btn-route" type="button" data-i18n="wholeRoute">Whole route</button>
+        <details id="settings-menu" class="menu settings-menu">
+          <summary aria-label="Settings" title="Settings" data-i18n-aria="settings" data-i18n-title="settings">
+            <svg class="icon cog" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.7 9l5.74 5.74a2 2 0 0 0 2.82 0L19 9"/></svg>
+          </summary>
+          <div class="menu-panel">
+            <p class="menu-heading" id="theme-heading">
+              <span class="palette" aria-hidden="true"></span><span data-i18n="theme">Theme</span>
+            </p>
+            <ul aria-labelledby="theme-heading">
+              <li><button type="button" data-theme-choice="light" data-i18n="themeLight">Light</button></li>
+              <li><button type="button" data-theme-choice="dark" data-i18n="themeDark">Dark</button></li>
+              <li><button type="button" data-theme-choice="system" data-i18n="themeSystem">Default</button></li>
+            </ul>
+            <p class="menu-heading" id="lang-heading">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 23l5-11 5 11M21.9 20.6h-7.8"/><path d="M1 5.7h6.5m0 0h2.6m-2.6 0c0 3.2-1.2 6.1-2.9 7.7m0 0C3.6 14.4 2.3 15 1 15m3.6-1.6C3.2 12.6 2.7 11.9 2.3 10.3m2.3 3.1c1.6 0.9 3.8 1.5 6.4 1.6M3.6 1l1.3 1.2"/></svg><span data-i18n="language">Language</span>
+            </p>
+            <ul id="lang-list" aria-labelledby="lang-heading"></ul>
+          </div>
+        </details>
+      </div>
+      <!-- Moved onto the map, above the zoom buttons, by map.js. -->
+      <div id="view-buttons" class="leaflet-bar view-buttons">
+        <button id="btn-route" type="button" aria-label="Whole route" title="Whole route" data-i18n-aria="wholeRoute" data-i18n-title="wholeRoute">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        </button>
       </div>
       <div id="rewind" class="rewind" hidden>
         <button id="rewind-play" class="play" type="button" aria-label="Play" title="Play"></button>

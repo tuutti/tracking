@@ -69,6 +69,7 @@
   --red: #c8102e;
   --amber: #d99a00;
   --ok: #0067b9;
+  --finished: #1a7f37;
   --hairline: #e6edf6;
   --shadow: 0 8px 24px rgb(0 53 128 / 0.08);
   --route: #6b8fc7;
@@ -92,6 +93,7 @@
     --red: #ff6b7a;
     --amber: #f2c14e;
     --ok: #8cc4f2;
+    --finished: #5fd38d;
     --hairline: #172b47;
     --shadow: 0 8px 24px rgb(0 0 0 / 0.3);
   }
@@ -109,6 +111,7 @@
   --red: #ff6b7a;
   --amber: #f2c14e;
   --ok: #8cc4f2;
+  --finished: #5fd38d;
   --hairline: #172b47;
   --shadow: 0 8px 24px rgb(0 0 0 / 0.3);
 }
@@ -164,14 +167,7 @@ body {
   color: var(--muted);
 }
 
-.top-right {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-/* Theme and language menus: an icon, the choice and a list. */
+/* Dropdown menus: the settings cog on the map and the participant sort. */
 .menu {
   position: relative;
   flex: none;
@@ -226,7 +222,7 @@ body {
   background: linear-gradient(135deg, #ffffff 50%, #003580 50%);
   box-shadow: inset 0 0 0 1px var(--border);
 }
-.menu ul {
+.menu > :is(ul, .menu-panel) {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
@@ -261,41 +257,53 @@ body {
   color: var(--text);
   font-weight: 600;
 }
-@media (max-width: 599px) {
-  .topbar .menu-current {
-    display: none;
-  }
+/* Settings: headed groups of choices. */
+.menu-panel {
+  min-width: 170px;
 }
-
-.live {
-  flex: none;
-  font-size: 12px;
+.menu-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.menu-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 10px 4px;
+  color: var(--muted);
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
-.live::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--muted);
+.menu-heading + ul + .menu-heading {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
 }
-.live.on {
-  color: var(--ok);
+.menu-heading .palette,
+.menu-heading .icon {
+  width: 14px;
+  height: 14px;
 }
-.live.on::before {
-  background: var(--ok);
-  animation: blink 2s infinite;
+/* On the map, the cog looks like the buttons beside it. */
+.map-buttons .settings-menu {
+  display: flex;
 }
-@keyframes blink {
-  50% {
-    opacity: 0.3;
-  }
+.map-buttons .settings-menu summary {
+  padding: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+.map-buttons .settings-menu summary:hover,
+.map-buttons .settings-menu[open] summary {
+  background: var(--track);
+}
+.settings-menu .cog {
+  width: 18px;
+  height: 18px;
 }
 
 .layout {
@@ -315,10 +323,14 @@ body {
   min-height: 240px;
   border: 1px solid var(--hairline);
   border-radius: 14px;
-  overflow: hidden;
+  /* Not clipped, so the settings menu can reach past the map; the map and the
+     rewind bar round their own corners (14px less the 1px border). */
   box-shadow: var(--shadow);
 }
 .map {
+  /* Keeps Leaflet's layers below what sits on the map. */
+  isolation: isolate;
+  border-radius: 13px 13px 0 0;
   flex: 1;
   min-height: 0;
   background: var(--track);
@@ -333,10 +345,13 @@ body {
   padding: 6px 16px;
   background: var(--surface);
   border-top: 1px solid var(--hairline);
+  border-radius: 0 0 13px 13px;
   font-size: 13px;
 }
+.map-wrap:has(> .rewind[hidden]) .map {
+  border-radius: 13px;
+}
 .rewind[hidden],
-.map-buttons[hidden],
 .panel-toggle[hidden] {
   display: none;
 }
@@ -474,23 +489,36 @@ body {
   display: flex;
   gap: 6px;
 }
-.map-buttons button {
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
+/* Whole route, above the zoom buttons and like them. */
+.view-buttons[hidden] {
+  display: none;
+}
+.view-buttons button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
   cursor: pointer;
 }
-.map-buttons button[aria-pressed="true"] {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: var(--on-brand);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--brand) 40%, transparent);
+.view-buttons button:last-child {
+  border-bottom: 0;
+}
+.view-buttons button:hover {
+  background: var(--track);
+}
+.view-buttons svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .panel {
@@ -718,8 +746,9 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
-  padding: 10px 2px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 2px;
   border: 0;
   background: none;
   color: var(--text);
@@ -734,34 +763,34 @@ body {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 8px;
 }
+/* One line: the name, then the note, which gives way first when short of room. */
 .p-name {
+  flex: none;
+  max-width: 100%;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.participant.finished .p-name {
+  color: var(--finished);
+}
+.participant.ended .p-name {
+  color: var(--muted);
+}
 .p-note {
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 12px;
-}
-.p-bar {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--track);
   overflow: hidden;
-  margin-top: 2px;
-}
-.p-bar span {
-  display: block;
-  height: 100%;
-  width: 0;
-  background: var(--c, var(--brand));
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* Checkpoints that needn't be visited: no share done or distance left to show. */
 .no-progress .bar,
-.no-progress .p-bar,
 .no-progress .remain-cell {
   display: none;
 }
@@ -771,7 +800,7 @@ body {
   white-space: nowrap;
 }
 .p-dist strong {
-  font-size: 18px;
+  font-size: 15px;
 }
 .p-dist small {
   font-size: 12px;
@@ -824,6 +853,40 @@ body {
 
 /* Collapsed on a phone: one row with the name and the way back, and a thin bar. */
 @media (max-width: 899px) {
+  /* The title as a chip on the map's top-left corner, clear of the settings
+     cog on the right; the map starts at the top of the screen. */
+  .layout {
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .topbar {
+    position: absolute;
+    z-index: 600;
+    top: calc(max(10px, env(safe-area-inset-top)) + 12px);
+    left: 22px;
+    right: 92px;
+    padding: 0;
+    background: none;
+    pointer-events: none;
+  }
+  .titles {
+    padding: 7px 12px;
+    border-radius: 10px;
+    background: var(--surface);
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .topbar h1 {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .titles:not(.open) #subtitle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
   .panel.collapsed {
     padding-top: 6px;
     padding-bottom: max(8px, env(safe-area-inset-bottom));
@@ -873,10 +936,30 @@ body {
 }
 
 @media (min-width: 900px) {
+  /* The title heads the sidebar and the map takes the full height beside them. */
+  body {
+    display: grid;
+    grid-template-columns: 360px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px 16px;
+    padding: 16px;
+    padding-top: max(16px, env(safe-area-inset-top));
+  }
   .layout {
-    flex-direction: row-reverse;
-    gap: 16px;
-    padding: 0 16px 16px;
+    display: contents;
+  }
+  .topbar {
+    grid-column: 1;
+    grid-row: 1;
+    padding: 4px 4px 0;
+    background: none;
+  }
+  .topbar h1 {
+    white-space: normal;
+  }
+  .map-wrap {
+    grid-column: 2;
+    grid-row: 1 / span 2;
   }
   .panel-toggle {
     display: none;
@@ -885,8 +968,9 @@ body {
     display: block;
   }
   .panel {
-    width: 360px;
-    flex: none;
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
     border-bottom: 1px solid var(--hairline);
     border-radius: 14px;
     padding: 18px 20px;
@@ -945,8 +1029,7 @@ body {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .rider .pulse,
-  .live.on::before {
+  .rider .pulse {
     animation: none;
   }
 }
@@ -1059,10 +1142,10 @@ body {
 /* Zoom buttons in the same style as the others. */
 .leaflet-touch .leaflet-bar,
 .leaflet-bar {
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+  box-shadow: none;
 }
 .leaflet-bar a,
 .leaflet-touch .leaflet-bar a {
@@ -1076,4 +1159,17 @@ body {
 .leaflet-touch .leaflet-bar a:first-child,
 .leaflet-touch .leaflet-bar a:last-child {
   border-radius: 0;
+}
+
+/* Read by screen readers, not shown. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

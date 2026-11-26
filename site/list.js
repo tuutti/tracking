@@ -96,7 +96,8 @@ export function renderList(sums) {
       btn.className = 'participant';
       btn.innerHTML =
         '<span class="p-main"><span class="p-name"></span>' +
-        '<span class="p-note muted"></span><span class="p-bar"><span></span></span></span>' +
+        '<span class="p-state sr-only"></span>' +
+        '<span class="p-note muted"></span></span>' +
         '<span class="p-dist"><strong></strong><small> km</small></span>';
       btn.addEventListener('click', () => select(r.id));
       li.append(check, btn);
@@ -112,8 +113,14 @@ export function renderList(sums) {
     row.querySelector('.p-dist strong').textContent = s.last
       ? fmtKm(s.done)
       : '–';
-    row.querySelector('.p-bar span').style.width = `${s.share * 100}%`;
     row.querySelector('.p-note').textContent = participantNote(s);
+    // Finished or ended shows as the name's colour; the words are for screen
+    // readers and the tooltip.
+    const over = overText(s);
+    row.classList.toggle('finished', !!(s.finished && s.ref));
+    row.classList.toggle('ended', !!s.ended && !s.finished);
+    row.querySelector('.p-state').textContent = over ? `, ${over}` : '';
+    row.querySelector('.p-name').title = over;
   }
   const shown = matching();
   for (const r of state.riders) {
@@ -131,6 +138,14 @@ export function renderList(sums) {
   }
 }
 
+// "Finished Tue 00.14" or "Ended", or nothing while riding.
+function overText(s) {
+  if (s.finished && s.ref) {
+    return T.finishedAt(fmtTime(s.ref.t));
+  }
+  return s.ended && s.last ? T.statusEnded : '';
+}
+
 function participantNote(s) {
   if (loading()) {
     return '';
@@ -138,13 +153,13 @@ function participantNote(s) {
   const pct = shareText(s);
   const note = (...parts) => parts.filter(Boolean).join(' · ');
   if (s.finished && s.ref) {
-    return note(pct, T.finishedAt(fmtTime(s.ref.t)));
+    return pct;
   }
   if (!s.last) {
     return T.noPositions;
   }
   if (s.ended) {
-    return note(pct, T.statusEnded);
+    return pct;
   }
   if (!s.v.live) {
     return pct ?? '';

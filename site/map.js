@@ -1,4 +1,5 @@
-// The map: the route or course, the riders' tracks and markers, following.
+// The map: the route or course, the riders' tracks and markers, following the
+// shown participant.
 import { $, cfg, cssColor, selectedRider, state, T } from './context.js';
 import { fmtTime } from './format.js';
 import { select } from './panel.js';
@@ -10,8 +11,39 @@ export const map = L.map('map', {
   attributionControl: true,
 });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
-// Tells Leaflet when the panel changes the map's size.
-new ResizeObserver(() => map.invalidateSize()).observe($('map'));
+// Whole route: an icon button above the zoom buttons (Leaflet stacks
+// bottom controls upwards).
+const ViewButtons = L.Control.extend({
+  onAdd() {
+    const bar = $('view-buttons');
+    L.DomEvent.disableClickPropagation(bar);
+    return bar;
+  },
+});
+new ViewButtons({ position: 'bottomright' }).addTo(map);
+// Tells Leaflet when the panel changes the map's size, and keeps following.
+// The map grows and shrinks at its bottom edge, so what's on it stays put
+// (Leaflet would keep the centre, sliding everything by half the change).
+new ResizeObserver(() => {
+  map.invalidateSize({ pan: false });
+  if (state.follow) {
+    centerOnRider(false);
+  }
+}).observe($('map'));
+
+// Height of the map's top strip that the badge and buttons cover.
+function buttonsInset() {
+  const buttons = document
+    .querySelector('.map-buttons')
+    .getBoundingClientRect();
+  return Math.max(0, buttons.bottom - $('map').getBoundingClientRect().top);
+}
+
+// fitBounds padding that keeps what's fitted out from under the buttons.
+const clearOfButtons = (pad) => ({
+  paddingTopLeft: [pad, buttonsInset() + pad],
+  paddingBottomRight: [pad, pad],
+});
 
 L.tileLayer(cfg.tileUrl, {
   maxZoom: 18,
@@ -64,11 +96,9 @@ const COURSE_COLORS = [
   '#00838f',
 ];
 
+// Following the shown participant stops when the map is dragged; picking them
+// again (on the list or the map) resumes it.
 map.on('dragstart', () => setFollow(false));
-$('btn-rider').addEventListener('click', () => {
-  setFollow(true);
-  centerOnRider(true);
-});
 $('btn-route').addEventListener('click', () => {
   setFollow(false);
   fitRoute();
@@ -76,40 +106,27 @@ $('btn-route').addEventListener('click', () => {
 
 export function setFollow(on) {
   state.follow = on;
-  $('btn-rider').setAttribute('aria-pressed', String(on));
 }
 
 export function fitRoute() {
   if (state.route) {
-    map.fitBounds(plannedLine.getBounds(), { padding: [20, 20] });
+    map.fitBounds(plannedLine.getBounds(), clearOfButtons(20));
   } else if (state.cp) {
-    map.fitBounds(state.cp.bounds, { padding: [30, 30] });
+    map.fitBounds(state.cp.bounds, clearOfButtons(30));
   }
 }
 
-// Follows the shown participant, or keeps everyone in view on the list.
+// Keeps the shown participant in the middle of what the buttons leave clear;
+// zoomIn brings the map to at least street level. Nothing on the list.
 export function centerOnRider(zoomIn) {
   const sel = selectedRider();
-  if (sel) {
-    const { marker } = view(sel);
-    if (marker) {
-      map.setView(marker, zoomIn ? Math.max(map.getZoom(), 12) : map.getZoom());
-    }
+  const marker = sel && view(sel).marker;
+  if (!marker) {
     return;
   }
-  const points = state.riders
-    .filter((r) => r.visible)
-    .map((r) => view(r).marker)
-    .filter(Boolean);
-  if (!points.length) {
-    return;
-  }
-  const bounds = L.latLngBounds(points);
-  // Only move when someone has left the view.
-  if (!zoomIn && map.getBounds().pad(-0.1).contains(bounds)) {
-    return;
-  }
-  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+  const zoom = zoomIn ? Math.max(map.getZoom(), 12) : map.getZoom();
+  const at = map.project(marker, zoom).subtract([0, buttonsInset() / 2]);
+  map.setView(map.unproject(at, zoom), zoom);
 }
 
 // A planned route, or for checkpoint events the checkpoints and parcours sections.

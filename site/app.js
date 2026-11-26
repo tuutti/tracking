@@ -1,6 +1,15 @@
 // The page's entry point: the top bar, polling and start-up.
 import { fetchCourseGpx, fetchTrack, loadEvent } from './api.js';
-import { $, cfg, EVENT_ID, LANG_KEY, lang, state, T } from './context.js';
+import {
+  $,
+  cfg,
+  EVENT_ID,
+  LANG_KEY,
+  lang,
+  selectedRider,
+  state,
+  T,
+} from './context.js';
 import { LANGUAGES, localized, strings, translatePage } from './i18n.js';
 import {
   centerOnRider,
@@ -17,7 +26,7 @@ const OVERLAP_MS = 10 * 60 * 1000; // re-fetch a little history in case of late 
 translatePage(T, lang);
 initPanel();
 
-// Language menu in the top bar: reloads with ?lang= and remembers the choice.
+// Language choices under the settings menu: reloads with ?lang= and remembers the choice.
 for (const code of LANGUAGES) {
   const a = document.createElement('a');
   const url = new URL(location.href);
@@ -40,20 +49,14 @@ for (const code of LANGUAGES) {
   li.append(a);
   $('lang-list').append(li);
 }
-$('lang-current').textContent = T.languageName;
 
-// Theme menu in the top bar: light, dark or the system's (the default); remembered.
+// Theme choices under the settings cog on the map: light, dark or the system's (the
+// default); remembered.
 const THEME_KEY = 'theme';
-const themeMenu = $('theme-menu');
-const THEME_NAMES = {
-  light: T.themeLight,
-  dark: T.themeDark,
-  system: T.themeSystem,
-};
+const themeMenu = $('settings-menu');
 
 function renderThemeMenu() {
   const theme = document.documentElement.dataset.theme ?? 'system';
-  $('theme-current').textContent = THEME_NAMES[theme];
   for (const btn of themeMenu.querySelectorAll('[data-theme-choice]')) {
     if (btn.dataset.themeChoice === theme) {
       btn.setAttribute('aria-current', 'true');
@@ -125,6 +128,13 @@ function showEventInfo(data) {
     .querySelector('meta[name="description"]')
     ?.setAttribute('content', subtitle || T.description);
 }
+
+// On phones the title is a chip on the map; tapping it shows the subtitle too.
+// (Screen readers have the subtitle either way.)
+const titles = document.querySelector('.titles');
+titles.addEventListener('click', () => {
+  titles.classList.toggle('open');
+});
 
 // ---------- Polling ----------
 
@@ -212,10 +222,10 @@ function showError(text) {
   el.hidden = false;
   el.className = 'notice err';
   el.textContent = text;
-  $('live').textContent = '';
   // Nothing to list or follow.
   $('panel-details').hidden = true;
-  document.querySelector('.map-buttons').hidden = true;
+  // Nothing to follow; the settings stay.
+  $('view-buttons').hidden = true;
   $('panel-toggle').hidden = true;
 }
 
@@ -249,7 +259,9 @@ function showError(text) {
     applyEvent(ev);
   }
   fitRoute();
-  setFollow(true);
+  // One participant (the only one, or from the address) is followed; the list
+  // starts with the whole route.
+  setFollow(!!selectedRider());
   if (ev) {
     render();
   }

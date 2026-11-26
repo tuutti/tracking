@@ -15,7 +15,6 @@ import { renderList } from './list.js';
 import {
   centerOnRider,
   drawTrack,
-  map,
   renderCheckpoints,
   renderMarker,
   setFollow,
@@ -31,7 +30,6 @@ function setCollapsed(collapsed) {
   panel.classList.toggle('collapsed', collapsed);
   $('panel-toggle').setAttribute('aria-expanded', String(!collapsed));
   renderToggleLabel();
-  map.invalidateSize();
   try {
     localStorage.setItem(PANEL_KEY, collapsed ? '1' : '0');
   } catch {
@@ -85,7 +83,8 @@ export function select(id) {
     url.searchParams.delete('participant');
   }
   history.replaceState(null, '', url);
-  setFollow(true);
+  // A participant is followed from the start; the list isn't.
+  setFollow(!!id);
   drawTrack();
   render();
   centerOnRider(true);
@@ -105,7 +104,6 @@ export function render() {
   if (state.cp) {
     renderCheckpoints(sel, sel && sums.get(sel));
   }
-  renderStatus(sums, sel);
 
   const single = state.riders.length === 1;
   $('list-view').hidden = !!sel;
@@ -113,7 +111,6 @@ export function render() {
   $('back').hidden = single;
   $('progress').hidden = !sel;
   $('stats').hidden = !sel;
-  $('btn-rider').textContent = sel ? T.followRider : T.followAll;
   renderToggleLabel();
   if (sel) {
     $('rider-name').textContent = sel.name;
@@ -124,39 +121,6 @@ export function render() {
   }
   renderNotice(sums, sel, now);
   renderRewind();
-}
-
-// The badge in the top bar: the shown participant's state, or everyone's.
-function renderStatus(sums, sel) {
-  const live = $('live');
-  if (loading()) {
-    live.textContent = T.loading;
-    return;
-  }
-  const all = sel ? [sums.get(sel)] : [...sums.values()];
-  const rewound = state.rewindT != null;
-  const riding = all.some((s) => s.last && !s.stale && !s.over);
-  live.classList.toggle('on', !rewound && riding && state.failures === 0);
-  live.textContent = statusText(all, rewound, riding);
-}
-
-function statusText(all, rewound, riding) {
-  if (rewound) {
-    return T.statusRewound;
-  }
-  if (all.length && all.every((s) => s.finished)) {
-    return T.statusFinished;
-  }
-  if (all.length && all.every((s) => s.over)) {
-    return T.statusEnded;
-  }
-  if (riding) {
-    return T.statusLive;
-  }
-  if (!all.some((s) => s.last)) {
-    return T.statusWaiting;
-  }
-  return T.statusNoSignal;
 }
 
 function renderNotice(sums, sel, now) {
