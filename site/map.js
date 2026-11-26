@@ -1,5 +1,5 @@
 // The map: the route or course, the riders' tracks and markers, following.
-import { $, cfg, selectedRider, state, T } from './context.js';
+import { $, cfg, cssColor, selectedRider, state, T } from './context.js';
 import { fmtTime } from './format.js';
 import { select } from './panel.js';
 import { buildRoute, parseCourse, parseGpx, sliceTo } from './progress.js';
@@ -12,13 +12,13 @@ new ResizeObserver(() => map.invalidateSize()).observe($('map'));
 
 L.tileLayer(cfg.tileUrl, { maxZoom: 18, attribution: cfg.tileAttribution }).addTo(map);
 
-const plannedLine = L.polyline([], { color: cfg.routeColor, weight: 4, opacity: 0.55 }).addTo(map);
+const plannedLine = L.polyline([], { color: cssColor('--route'), weight: 4, opacity: 0.55 }).addTo(map);
 // Checkpoint events: parcours sections (above the riders' tracks) and checkpoint markers.
 const courseLayer = L.featureGroup().addTo(map);
 map.createPane('parcours').style.zIndex = 450;
 let cpMarkers = [];
 // The shown participant's progress along the route.
-const coveredLine = L.polyline([], { color: cfg.brandColor, weight: 5, opacity: 0.9 }).addTo(map);
+const coveredLine = L.polyline([], { color: cssColor('--brand'), weight: 5, opacity: 0.9 }).addTo(map);
 // look: 'active' (pulsing), 'idle' (ride over: no pulse) or 'stale' (grey).
 const riderIcon = (r, look) =>
   L.divIcon({
@@ -91,7 +91,7 @@ function drawCourse() {
   // One colour per item: the waypoints first, then the parcours sections.
   const colorOf = (i) => COURSE_COLORS[i % COURSE_COLORS.length];
   // Tooltips take HTML; names come from the GPX.
-  const tip = (text, color) => `<span style="color:${color}">${escapeHtml(text)}</span>`;
+  const tip = (text, color) => mapPill(text, color);
 
   sections.forEach((sec, k) => {
     const color = colorOf(checkpoints.length + k);
@@ -125,6 +125,10 @@ function drawCourse() {
   });
 }
 
+// A name on the map, in a pill edged with its colour.
+export const mapPill = (text, color) =>
+  `<span class="map-pill"${color ? ` style="--c:${color}"` : ''}>${escapeHtml(text)}</span>`;
+
 const escapeHtml = (text) =>
   text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -137,10 +141,9 @@ const COURSE_COLORS = [
   '#2b2d42', '#b07d00', '#7b6d8d', '#00838f',
 ];
 
-// Fills the checkpoints the shown participant has reached (none on the list).
+// Fades the checkpoints the shown participant hasn't reached yet (none on the list).
 export function renderCheckpoints(sel, s) {
-  const reached = sel ? s.cpReached : 0;
-  cpMarkers.forEach((m, i) => m.getElement()?.classList.toggle('reached', i < reached));
+  cpMarkers.forEach((m, i) => m.getElement()?.classList.toggle('ahead', !!sel && i >= s.cpReached));
 }
 
 export function drawTrack() {
@@ -207,11 +210,11 @@ export function renderMarker(r, s, sel, anyActive) {
   r.marker.getElement()?.classList.toggle('dim', dim);
   // With several participants, names stay on the map.
   const multi = state.riders.length > 1;
-  const tip = multi ? r.name : `${r.name} · ${fmtTime(s.last.t)}`;
+  const tip = mapPill(multi ? r.name : `${r.name} · ${fmtTime(s.last.t)}`, r.color);
   const tooltip = r.marker.getTooltip();
   if (!tooltip || tooltip.options.permanent !== multi) {
     r.marker.unbindTooltip();
-    r.marker.bindTooltip(tip, multi ? { permanent: true, direction: 'right', offset: [8, 0], className: 'rider-tip' } : {});
+    r.marker.bindTooltip(tip, multi ? { permanent: true, direction: 'right', offset: [8, 0], className: 'rider-tip' } : { className: 'rider-tip' });
   } else {
     r.marker.setTooltipContent(tip);
   }

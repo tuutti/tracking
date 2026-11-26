@@ -13,10 +13,11 @@ window.TRACKER_CONFIG = {
   // page hosted elsewhere: 'https://<TRACCAR_DOMAIN>', with that origin in ALLOWED_ORIGINS.
   apiUrl: '',
 
-  // Brand colour (also the first participant's, unless the event gives one), planned route.
-  // Each participant's ridden GPS track is drawn in a darker shade of their colour.
-  brandColor: '#e4572e',
-  routeColor: '#3a6ea5',
+  // Accent colour of the page and the planned route's colour, or null for the
+  // stylesheet's. Each participant's ridden GPS track is drawn in a
+  // darker shade of their colour.
+  brandColor: null,
+  routeColor: null,
 
   // Polling and signal handling.
   pollSeconds: 60,

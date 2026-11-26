@@ -2,6 +2,12 @@
 import { pickLanguage, strings } from './i18n.js';
 
 export const cfg = window.TRACKER_CONFIG;
+
+// Colours from config.js override the stylesheet's; the map reads them from there.
+const root = document.documentElement;
+if (cfg.brandColor) root.style.setProperty('--brand', cfg.brandColor);
+if (cfg.routeColor) root.style.setProperty('--route', cfg.routeColor);
+export const cssColor = (name) => getComputedStyle(root).getPropertyValue(name).trim();
 export const params = new URLSearchParams(location.search);
 export const LANG_KEY = 'lang';
 let rememberedLang = null;

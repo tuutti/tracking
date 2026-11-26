@@ -8,6 +8,13 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="stylesheet" href="style.css">
   <script src="config.js"></script>
+  <script>
+    // Light or dark as the viewer last chose with the toggle; otherwise the system's.
+    try {
+      const theme = localStorage.getItem('theme');
+      if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
 </head>
 <body>
   <header class="topbar">
@@ -17,7 +24,25 @@
     </div>
     <div class="top-right">
       <span id="live" class="live" aria-live="polite" data-i18n="loading">Loading...</span>
-      <nav id="lang-switch" class="lang-switch" aria-label="Language"></nav>
+      <details id="theme-menu" class="menu">
+        <summary aria-label="Theme" data-i18n-aria="theme">
+          <span class="palette" aria-hidden="true"></span><span id="theme-current" class="menu-current"></span>
+          <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.7 9l5.74 5.74a2 2 0 0 0 2.82 0L19 9"/></svg>
+        </summary>
+        <ul>
+          <li><button type="button" data-theme-choice="light" data-i18n="themeLight">Light</button></li>
+          <li><button type="button" data-theme-choice="dark" data-i18n="themeDark">Dark</button></li>
+          <li><button type="button" data-theme-choice="system" data-i18n="themeSystem">Default</button></li>
+        </ul>
+      </details>
+      <details id="lang-menu" class="menu">
+        <summary aria-label="Language" data-i18n-aria="language">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 23l5-11 5 11M21.9 20.6h-7.8"/><path d="M1 5.7h6.5m0 0h2.6m-2.6 0c0 3.2-1.2 6.1-2.9 7.7m0 0C3.6 14.4 2.3 15 1 15m3.6-1.6C3.2 12.6 2.7 11.9 2.3 10.3m2.3 3.1c1.6 0.9 3.8 1.5 6.4 1.6M3.6 1l1.3 1.2"/></svg>
+          <span id="lang-current" class="menu-current"></span>
+          <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.7 9l5.74 5.74a2 2 0 0 0 2.82 0L19 9"/></svg>
+        </summary>
+        <ul id="lang-list"></ul>
+      </details>
     </div>
   </header>
 
@@ -73,10 +98,17 @@
         <div id="list-view">
           <div class="list-head">
             <h2 class="list-title" data-i18n="participants">Participants</h2>
-            <div class="sort" role="group" aria-label="Sort by" data-i18n-aria="sortBy">
-              <button id="sort-standing" type="button" data-sort="distance" data-i18n="sortDistance" aria-pressed="true">Distance</button>
-              <button type="button" data-sort="name" data-i18n="sortName" aria-pressed="false">Name</button>
-            </div>
+            <details id="sort-menu" class="menu sort-menu">
+              <summary aria-label="Sort by" data-i18n-aria="sortBy">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg>
+                <span id="sort-current" class="menu-current"></span>
+                <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.7 9l5.74 5.74a2 2 0 0 0 2.82 0L19 9"/></svg>
+              </summary>
+              <ul>
+                <li><button id="sort-standing" type="button" data-sort="distance" data-i18n="sortDistance">Distance</button></li>
+                <li><button type="button" data-sort="name" data-i18n="sortName">Name</button></li>
+              </ul>
+            </details>
           </div>
           <div class="list-tools">
             <input id="toggle-all" class="vis" type="checkbox" checked aria-label="Select all" title="Select all"

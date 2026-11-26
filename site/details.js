@@ -1,8 +1,8 @@
 // One participant's details: progress, stats, checkpoints and the record.
-import { $, cfg, lang, loading, state, T } from './context.js';
+import { $, cfg, cssColor, lang, loading, state, T } from './context.js';
 import { fmtAgo, fmtDuration, fmtHours, fmtKm, fmtNum, fmtTime } from './format.js';
 import { localized } from './i18n.js';
-import { map } from './map.js';
+import { map, mapPill } from './map.js';
 import { currentSpeed, movingStats, pointAt, recentSpeed, recordPace } from './progress.js';
 import { cpCount } from './summary.js';
 
@@ -137,13 +137,13 @@ export function renderRecord(r, { now, ghostAt, ref, done, remaining, avgKmh, fi
   if (!recordMarker) {
     recordMarker = L.circleMarker(ghost, {
       radius: 7,
-      color: cfg.routeColor,
+      color: cssColor('--route'),
       weight: 3,
       fillColor: '#fff',
       fillOpacity: 1,
       dashArray: '3 3',
     })
-      .bindTooltip(T.recordPace, { permanent: true, direction: 'right', offset: [8, 0], className: 'record-tip' })
+      .bindTooltip(mapPill(T.recordPace), { permanent: true, direction: 'right', offset: [8, 0], className: 'record-tip' })
       .addTo(map);
   } else {
     recordMarker.setLatLng(ghost);

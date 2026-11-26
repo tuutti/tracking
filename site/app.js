@@ -1,25 +1,23 @@
 // The page's entry point: the top bar, polling and start-up.
 import { fetchCourseGpx, fetchTrack, loadEvent } from './api.js';
 import { $, cfg, EVENT_ID, LANG_KEY, lang, state, T } from './context.js';
-import { LANGUAGES, localized, translatePage } from './i18n.js';
+import { LANGUAGES, localized, strings, translatePage } from './i18n.js';
 import { centerOnRider, drawTrack, fitRoute, loadCourse, setFollow } from './map.js';
 import { initPanel, render } from './panel.js';
 import { addRider, merge, syncRiders } from './riders.js';
 
 const OVERLAP_MS = 10 * 60 * 1000; // re-fetch a little history in case of late uploads
 
-document.documentElement.style.setProperty('--brand', cfg.brandColor);
-document.documentElement.style.setProperty('--route', cfg.routeColor);
 translatePage(T, lang);
 initPanel();
 
-// FI | EN in the top bar: reloads with ?lang= and remembers the choice.
+// Language menu in the top bar: reloads with ?lang= and remembers the choice.
 for (const code of LANGUAGES) {
   const a = document.createElement('a');
   const url = new URL(location.href);
   url.searchParams.set('lang', code);
   a.href = url;
-  a.textContent = code.toUpperCase();
+  a.textContent = strings(code).languageName;
   a.lang = code;
   a.hreflang = code;
   if (code === lang) a.setAttribute('aria-current', 'true');
@@ -30,9 +28,59 @@ for (const code of LANGUAGES) {
       // Storage blocked: the link's ?lang= still applies.
     }
   });
-  $('lang-switch').append(a);
+  const li = document.createElement('li');
+  li.append(a);
+  $('lang-list').append(li);
 }
-$('lang-switch').setAttribute('aria-label', T.language);
+$('lang-current').textContent = T.languageName;
+
+// Theme menu in the top bar: light, dark or the system's (the default); remembered.
+const THEME_KEY = 'theme';
+const themeMenu = $('theme-menu');
+const THEME_NAMES = { light: T.themeLight, dark: T.themeDark, system: T.themeSystem };
+
+function renderThemeMenu() {
+  const theme = document.documentElement.dataset.theme ?? 'system';
+  $('theme-current').textContent = THEME_NAMES[theme];
+  for (const btn of themeMenu.querySelectorAll('[data-theme-choice]')) {
+    if (btn.dataset.themeChoice === theme) btn.setAttribute('aria-current', 'true');
+    else btn.removeAttribute('aria-current');
+  }
+}
+
+for (const btn of themeMenu.querySelectorAll('[data-theme-choice]')) {
+  btn.addEventListener('click', () => {
+    const theme = btn.dataset.themeChoice;
+    if (theme === 'system') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+    try {
+      if (theme === 'system') localStorage.removeItem(THEME_KEY);
+      else localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // Storage blocked: for this visit only.
+    }
+    themeMenu.open = false;
+    renderThemeMenu();
+  });
+}
+renderThemeMenu();
+
+// The dropdown menus: one open at a time; a click elsewhere or Escape closes them.
+const menus = [...document.querySelectorAll('.menu')];
+for (const menu of menus) {
+  menu.addEventListener('toggle', () => {
+    if (menu.open) for (const other of menus) if (other !== menu) other.open = false;
+  });
+  menu.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && menu.open) {
+      menu.open = false;
+      menu.querySelector('summary').focus();
+    }
+  });
+}
+document.addEventListener('click', (e) => {
+  for (const menu of menus) if (!menu.contains(e.target)) menu.open = false;
+});
 
 // The event's title and subtitle, from the API; the generic heading until then.
 function showEventInfo(data) {

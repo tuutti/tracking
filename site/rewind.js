@@ -64,7 +64,10 @@ function countUpTo(positions, t) {
 
 // The slider counts minutes from the event's first start; its right end is live.
 const slider = $('rewind-slider');
+// How much of the track is filled (Chromium and Safari draw no progress of their own).
+const fillSlider = () => slider.style.setProperty('--pct', `${(Number(slider.value) / Number(slider.max) || 0) * 100}%`);
 slider.addEventListener('input', () => {
+  fillSlider();
   const min = Number(slider.value);
   state.rewindT = min >= Number(slider.max) ? null : state.eventStart + min * 60000;
   if (state.rewindT == null) play.on = false;
@@ -141,6 +144,7 @@ export function renderRewind() {
   slider.max = String(Math.ceil((rewindEnd() - state.eventStart) / 60000));
   const live = state.rewindT == null;
   slider.value = live ? slider.max : String(Math.floor((state.rewindT - state.eventStart) / 60000));
+  fillSlider();
   const playBtn = $('rewind-play');
   playBtn.classList.toggle('playing', play.on);
   playBtn.setAttribute('aria-label', play.on ? T.pause : T.play);

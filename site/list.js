@@ -17,8 +17,9 @@ const nameOrder = new Intl.Collator(T.locale);
 
 function setSort(by) {
   sortBy = by;
-  for (const btn of document.querySelectorAll('.sort button')) {
-    btn.setAttribute('aria-pressed', String(btn.dataset.sort === by));
+  for (const btn of document.querySelectorAll('#sort-menu [data-sort]')) {
+    if (btn.dataset.sort === by) btn.setAttribute('aria-current', 'true');
+    else btn.removeAttribute('aria-current');
   }
   try {
     localStorage.setItem(SORT_KEY, by);
@@ -27,9 +28,10 @@ function setSort(by) {
   }
 }
 
-for (const btn of document.querySelectorAll('.sort button')) {
+for (const btn of document.querySelectorAll('#sort-menu [data-sort]')) {
   btn.addEventListener('click', () => {
     setSort(btn.dataset.sort);
+    $('sort-menu').open = false;
     render();
   });
 }
@@ -58,6 +60,8 @@ $('toggle-all').addEventListener('change', (e) => setVisible(matching(), e.targe
 
 // Everyone with the distance ridden, furthest first or by name.
 export function renderList(sums) {
+  // The chosen order's name ("Standing" in checkpoint events, set after start-up).
+  $('sort-current').textContent = document.querySelector('#sort-menu [aria-current]').textContent;
   const list = $('participants');
   const order = [...sums.entries()].sort(([ra, a], [rb, b]) =>
     sortBy === 'name' ? nameOrder.compare(ra.name, rb.name) : standing(a, b) || nameOrder.compare(ra.name, rb.name));
@@ -73,7 +77,7 @@ export function renderList(sums) {
       btn.type = 'button';
       btn.className = 'participant';
       btn.innerHTML =
-        '<span class="swatch"></span><span class="p-main"><span class="p-name"></span>' +
+        '<span class="p-main"><span class="p-name"></span>' +
         '<span class="p-note muted"></span><span class="p-bar"><span></span></span></span>' +
         '<span class="p-dist"><strong></strong><small> km</small></span>';
       btn.addEventListener('click', () => select(r.id));

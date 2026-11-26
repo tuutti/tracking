@@ -86,7 +86,6 @@ export function render() {
   renderToggleLabel();
   if (sel) {
     $('rider-name').textContent = sel.name;
-    $('rider-name').style.setProperty('--c', sel.color);
     renderDetail(sel, sums.get(sel));
   } else {
     renderList(sums);

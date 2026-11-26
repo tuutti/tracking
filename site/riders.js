@@ -4,7 +4,8 @@ import { map } from './map.js';
 import { createCheckpointTracker, createOdometer, createProgressTracker } from './progress.js';
 
 // Participants without a colour of their own, in event order. No blues (the route).
-const PALETTE = [cfg.brandColor, '#2a9d8f', '#8e44ad', '#d4a017', '#d62f7f', '#5c7c2c', '#6d4c41', '#e07b00'];
+// Distinct from each other and from the route's light blue.
+const PALETTE = ['#c8102e', '#e07b00', '#1a7f37', '#b5179e', '#00838f', '#6a3fa0', '#8a5a00', '#0b1f3a'];
 
 // One participant: its track, progress and map layers.
 export function addRider(p, index) {
