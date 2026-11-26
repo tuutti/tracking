@@ -20,19 +20,6 @@ node tools/preview-image.mjs --page https://PAGE_DOMAIN --events ../backend/even
 This writes `<event-id>/preview.jpg` into the event's folder. Without `--events` it writes
 `previews/<event-id>.jpg`, and without an id it does every event.
 
-To work on the page, check out tracker-backend next to this repo as `backend/`, start its local stack and open
-http://localhost:8000/event/multi.
-
-The code follows Drupal core's JavaScript style: ESLint with `airbnb-base` and Prettier, with the same settings,
-plus braces around every `if` body. The page itself has no build step; Node is only for these tools and the tests.
-
-```sh
-npm install
-npm run lint     # ESLint, including Prettier's formatting
-npm run format   # reformat with Prettier
-npm test
-```
-
 ## API
 
 The page reads three GET endpoints under `apiUrl`. Any backend that serves them works.
