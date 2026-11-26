@@ -2,6 +2,8 @@
 
 A live-tracking page for ultra-distance rides.
 
+![Preview](preview.jpg)
+
 ## Setup
 
 - Settings (colours, map tiles, thresholds, language) are in `site/config.js`.
