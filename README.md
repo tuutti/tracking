@@ -6,10 +6,34 @@ A live-tracking page for ultra-distance rides.
 
 ## Setup
 
-- Settings (colours, map tiles, thresholds, language) are in `site/config.js`.
-- The page shows one event: `/event/<id>`, or `?event=<id>` on a static host.
-- tracker-backend serves the page with the API on the same origin, so `apiUrl` stays `''`. To host `site/`
-  elsewhere, set `apiUrl` to the API's address and allow that origin in the API's CORS settings.
+The page is plain files with no build step: put `site/` on any static host (GitHub Pages, Netlify, an S3
+bucket, nginx). It gets its data from an API, described [below](#api).
+
+1. In `site/config.js`, set `apiUrl` to where the API is served, without a trailing slash, for example
+   `'https://api.example.com'`. The API has to allow the page's origin (CORS). Never put a Traccar token or
+   any other secret in `config.js`: everything in `site/` is public.
+2. Set `lang` to `'fi'` or `'en'` for the default language; with `null` it's English. Viewers can switch
+   it, and `?lang=fi` in the address picks it.
+3. Upload `site/`.
+
+The page shows one event: `https://example.com/?event=<id>`. Add `&participant=<id>` to open one rider.
+
+Other settings (map tiles, time zone, polling and signal thresholds) are in `config.js` too, with notes.
+
+### Without a server
+
+The API can be static files too, for example in the same place as the page with `apiUrl: ''`. The page
+asks for `events/<id>/track?since=...`; a static host ignores the query and serves the whole track, which
+the page handles. That suits a finished event, or one whose track file a script refreshes every minute.
+
+```
+site/
+  events/index.html       the event list (JSON; the host serves it for /events)
+  events/<id>/track       the positions (JSON, no extension)
+  events/<id>/route.gpx   the route or course
+```
+
+### Preview image
 
 For a preview image (needs Chromium):
 

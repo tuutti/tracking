@@ -1,16 +1,18 @@
 // Everything you'd normally change lives here.
 
 window.TRACKER_CONFIG = {
-  // Default page language: 'en' or 'fi', or null for the server's PAGE_LANG
-  // (tracker-backend's .env; English without it). The EN | FI switch (remembered per viewer)
-  // and ?lang=en / ?lang=fi in the URL override it.
+  // Default page language: 'en' or 'fi', or null for the page's own <html lang>
+  // (English). The language in the settings menu (remembered per viewer) and
+  // ?lang=en / ?lang=fi in the address override it.
   lang: null,
 
-  // The title, subtitle, participants and previous record are set per event (events.json).
+  // The title, subtitle, participants and previous record come with each event
+  // from the API.
 
-  // Where /events is served, without a trailing slash. Never put a Traccar token here.
-  // '' = same origin as the page (tracker-backend serves it there). For a copy of the
-  // page hosted elsewhere: 'https://<TRACCAR_DOMAIN>', with that origin in ALLOWED_ORIGINS.
+  // Where the API (/events, see the README) is served, without a trailing slash:
+  // '' for the same place as the page (static files next to it), or for example
+  // 'https://api.example.com', which has to allow this page's origin (CORS).
+  // Everything here is public: never put a Traccar token or other secret in it.
   apiUrl: '',
 
   // Accent colour of the page and the planned route's colour, or null for the
