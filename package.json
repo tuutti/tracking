@@ -7,7 +7,7 @@
   },
   "scripts": {
     "lint": "eslint --ext .js,.mjs .",
-    "format": "prettier --write \"site/**/*.{js,css}\" \"test/**/*.mjs\" \"tools/**/*.mjs\"",
+    "format": "prettier --write \"site/**/*.{js,css}\" \"test/**/*.mjs\"",
     "test": "node --test test/"
   },
   "devDependencies": {

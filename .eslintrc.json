@@ -92,7 +92,7 @@
   },
   "overrides": [
     {
-      "files": ["test/**", "tools/**"],
+      "files": ["test/**"],
       "env": {
         "node": true
       },
