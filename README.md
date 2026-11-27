@@ -81,8 +81,28 @@ The page reads three GET endpoints under `apiUrl`. Any backend that serves them 
   `since` is fine.
 - The response also repeats the event's `type`, `title`, `subtitle` and `record`.
 
-**`/events/<id>/route.gpx`**: the route, or for checkpoint events a course whose waypoints are the start, the
-checkpoints and the finish.
+**`/events/<id>/route.gpx`**: the route, or for checkpoint events the course. See [GPX files](#gpx-files).
+
+## GPX files
+
+**Route events**: the track (`<trk>`) is the route. Waypoints are ignored.
+
+**Checkpoint events**: each waypoint (`<wpt>`) is a control, in visiting order: the first is the start, the
+last the finish. Tracks are optional parcours sections, only drawn on the map.
+
+```xml
+<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="59.8227" lon="22.9719"><name>Start</name></wpt>
+  <wpt lat="61.7992" lon="23.6341">
+    <name>CP1</name>
+    <extensions><radius>500</radius></extensions>
+  </wpt>
+  <wpt lat="70.0887" lon="27.9603"><name>Finish</name></wpt>
+</gpx>
+```
+
+A control counts when a rider comes within its radius: `cpRadiusM` in the event (300 m by default), or
+`<radius>` on the waypoint.
 
 ## How the numbers are computed
 
