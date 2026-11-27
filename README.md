@@ -1,6 +1,7 @@
 # Ride tracker page
 
-A live-tracking page for ultra-distance rides.
+A live-tracking page for anything tracked by GPS. It reads positions from an
+API that serves the format below, such as Traccar.
 
 ![Preview](preview.jpg)
 
@@ -13,7 +14,7 @@ bucket, nginx). It gets its data from an API, described [below](#api).
    `'https://api.example.com'`. The API has to allow the page's origin (CORS). Everything in `site/` is
    public, so never put a Traccar token or any other secret in `config.js`.
 2. Set `lang` to `'fi'` or `'en'` for the default language. With `null` it's English. Viewers can switch
-   it, and `?lang=fi` in the address picks it.
+   it, and `?lang=fi` in the address overrides it.
 3. Upload `site/`.
 
 The page shows one event at `https://example.com/?event=<id>`. Add `&participant=<id>` to open one rider.
@@ -70,7 +71,7 @@ The positions, polled every minute.
 
 - A position is `[id, timeMs, lat, lon, speedKmh, accuracyM, batteryPct, charging]`. The last two are
   optional.
-- `id` must be unique per participant. The page drops duplicates by it, so returning more than asked for
+- `id` must be unique per participant. The page drops duplicates by it, so returning positions from before
   `since` is fine.
 - The response also repeats the event's `type`, `title`, `subtitle` and `record`.
 
@@ -82,7 +83,7 @@ The route, or for checkpoint events the course. See [GPX files](#gpx-files).
 
 For route events the track (`<trk>`) is the route. Waypoints are ignored.
 
-For checkpoint events each waypoint (`<wpt>`) is a control, in visiting order. The first is the start and
+For checkpoint events each waypoint (`<wpt>`) is a checkpoint, in visiting order. The first is the start and
 the last the finish. Tracks are optional parcours sections, only drawn on the map.
 
 ```xml
@@ -96,8 +97,8 @@ the last the finish. Tracks are optional parcours sections, only drawn on the ma
 </gpx>
 ```
 
-A control counts when a rider comes within its radius. That's `cpRadiusM` in the event (300 m by default),
-or `<radius>` on the waypoint.
+A checkpoint counts when a rider comes within its radius. The radius is the event's `cpRadiusM` (300 m by
+default), unless the waypoint sets its own `<radius>`.
 
 ## How the numbers are computed
 
@@ -105,9 +106,9 @@ or `<radius>` on the waypoint.
   got, so loops and out-and-backs don't jump ahead. Positions over 300 m off the route don't count.
 - **Average speed and ETA.** Average speed includes stops, since that's what predicts the finish.
 - **Checkpoints.** They count in order, at the first accurate enough position inside their radius.
-  Distance is measured from the positions.
+  The distance ridden is measured from the positions.
 - **Signal gaps.** Late positions are merged in. Gaps show as dashed lines, and the rider greys out after
   `staleMinutes`.
-- **Current speed.** Wi-Fi and cell positions report 0, so the page shows the recent average instead,
+- **Current speed.** Wi-Fi and cell positions report a speed of 0, so the page shows the recent average instead,
   marked "≈".
 - **Rewind.** The slider shows the ride at any moment, and ▶ plays it back.
